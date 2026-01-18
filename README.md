@@ -10,6 +10,8 @@ Local-first, agent-agnostic skills manager. Track, update, and sync skills acros
 npm install -g skillbox
 ```
 
+TODO: Publish initial npm release
+
 ### From Source
 
 ```bash
