@@ -122,4 +122,68 @@ export const registerProject = (program: Command): void => {
         }
       }
     });
+
+  project
+    .command("inspect")
+    .argument("<path>", "Project path")
+    .option("--json", "JSON output")
+    .action(async (inputPath, options) => {
+      const projectsIndex = await loadProjects();
+      const skillIndex = await loadIndex();
+      const resolved = path.resolve(inputPath);
+      const project = projectsIndex.projects.find((entry) => entry.root === resolved);
+
+      if (!project) {
+        const message = `Project not registered: ${resolved}`;
+        if (isJsonEnabled(options)) {
+          printJson({ ok: false, command: "project inspect", error: { message } });
+          return;
+        }
+        printError(message);
+        return;
+      }
+
+      const skills = new Set<string>();
+      for (const skill of skillIndex.skills) {
+        for (const install of skill.installs ?? []) {
+          if (install.scope === "project" && install.projectRoot === resolved) {
+            skills.add(skill.name);
+          }
+        }
+      }
+
+      const data = {
+        root: project.root,
+        agentPaths: project.agentPaths ?? {},
+        skills: Array.from(skills).sort()
+      };
+
+      if (isJsonEnabled(options)) {
+        printJson({
+          ok: true,
+          command: "project inspect",
+          data
+        });
+        return;
+      }
+
+      printInfo(`Project: ${data.root}`);
+      const agentEntries = Object.entries(data.agentPaths);
+      if (agentEntries.length === 0) {
+        printInfo("Agent paths: default");
+      } else {
+        printInfo("Agent paths:");
+        for (const [agent, paths] of agentEntries) {
+          printInfo(`- ${agent}: ${paths.join(", ")}`);
+        }
+      }
+      if (data.skills.length === 0) {
+        printInfo("Skills: none");
+      } else {
+        printInfo("Skills:");
+        for (const skillName of data.skills) {
+          printInfo(`- ${skillName}`);
+        }
+      }
+    });
 };

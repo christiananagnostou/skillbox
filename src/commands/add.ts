@@ -8,7 +8,7 @@ import { allAgents } from "../lib/agents.js";
 import { buildTargets, copySkillToTargets } from "../lib/sync.js";
 import { findProjectRoot } from "../lib/project-root.js";
 import type { AgentId } from "../lib/agents.js";
-import { loadProjects, findProject } from "../lib/projects.js";
+import { loadProjects, findProject, saveProjects, upsertProject } from "../lib/projects.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 
 export const registerAdd = (program: Command): void => {
@@ -58,7 +58,12 @@ export const registerAdd = (program: Command): void => {
           : allAgents;
 
         const projects = await loadProjects();
-        const projectEntry = findProject(projects, projectRoot);
+        let projectEntry = findProject(projects, projectRoot);
+        if (!projectEntry && scope === "project") {
+          const merged = upsertProject(projects, projectRoot);
+          await saveProjects(merged);
+          projectEntry = findProject(merged, projectRoot);
+        }
         const paths = buildProjectAgentPaths(projectRoot, projectEntry);
         const installed: { agent: string; scope: string; targets: string[] }[] = [];
         const installs = [] as Array<{ scope: "user" | "project"; agent: string; path: string; projectRoot?: string }>;
