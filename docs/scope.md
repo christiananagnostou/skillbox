@@ -14,7 +14,7 @@ Skillbox supports two scopes:
 
 The canonical store is always user-level:
 
-- ~/.skillbox/skills/<name>/
+- ~/.config/skillbox/skills/<name>/
 
 This canonical copy is used for:
 
@@ -26,7 +26,7 @@ This canonical copy is used for:
 
 Project-specific configuration is stored in:
 
-- ~/.skillbox/projects.json
+- ~/.config/skillbox/projects.json
 
 Each project entry includes:
 

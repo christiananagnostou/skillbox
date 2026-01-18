@@ -88,7 +88,7 @@ Notes:
 
 Default location:
 
-- ~/.skillbox/skills/<name>/
+- ~/.config/skillbox/skills/<name>/
 
 The canonical store is the single source of truth for:
 
@@ -102,7 +102,7 @@ Skills are copied into agent-specific folders during sync.
 
 Skillbox maintains a local index at:
 
-- ~/.skillbox/index.json
+- ~/.config/skillbox/index.json
 
 This index tracks:
 
@@ -116,7 +116,7 @@ This index tracks:
 
 Skillbox tracks projects separately at:
 
-- ~/.skillbox/projects.json
+- ~/.config/skillbox/projects.json
 
 Each project entry includes:
 
