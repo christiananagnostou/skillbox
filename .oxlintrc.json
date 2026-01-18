@@ -1,0 +1,6 @@
+{
+  "extends": ["recommended"],
+  "rules": {
+    "no-console": "off"
+  }
+}

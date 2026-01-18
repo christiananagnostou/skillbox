@@ -29,6 +29,16 @@ brew install skillbox
 
 TODO: Homebrew formula publishing
 
+## CI
+
+```bash
+npm run lint:ci
+npm run format:check
+npm run build
+```
+
+TODO: Publish GitHub Actions badge
+
 ## Quick Start
 
 ```bash
@@ -105,9 +115,11 @@ skillbox convert <url> --agent
 Skillbox maintains a canonical store and syncs into agent-native folders.
 
 Canonical store:
+
 - `~/.config/skillbox/skills/<name>/`
 
 Index + config:
+
 - `~/.config/skillbox/index.json`
 - `~/.config/skillbox/projects.json`
 - `~/.config/skillbox/config.json`
@@ -143,6 +155,7 @@ Add this to your project instructions for more consistent results:
 Use `skillbox` to manage skills. Run `skillbox --help` for all commands.
 
 Core workflow:
+
 1. `skillbox list --json`
 2. `skillbox status --json`
 3. `skillbox update <name> --json`
