@@ -31,10 +31,6 @@ npm run format:check
 npm run build
 ```
 
-## Releases
-
-Releases are published from GitHub Releases. Create a release with a `v<version>` tag to trigger npm publishing.
-
 ## Quick Start
 
 ```bash
