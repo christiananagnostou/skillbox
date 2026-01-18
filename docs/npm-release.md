@@ -10,6 +10,8 @@ This repo publishes the CLI to npm using GitHub Actions.
 
 ## Release flow
 
+Note: npm release is live for `skillbox`.
+
 1) Update version in `package.json`.
 2) Build locally and run checks:
 
