@@ -3,6 +3,7 @@ import path from "node:path";
 import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.js";
 import { loadProjects, saveProjects, upsertProject } from "../lib/projects.js";
 import { loadIndex } from "../lib/index.js";
+import { copySkillToInstallPaths } from "../lib/sync.js";
 
 const collect = (value: string, previous: string[] = []): string[] => {
   return [...previous, value];
@@ -79,58 +80,9 @@ export const registerProject = (program: Command): void => {
     .command("list")
     .option("--json", "JSON output")
     .action(async (options) => {
-      const projectsIndex = await loadProjects();
-      const skillIndex = await loadIndex();
-
-      const projectSkills = new Map<string, string[]>();
-      for (const skill of skillIndex.skills) {
-        for (const install of skill.installs ?? []) {
-          if (install.scope !== "project" || !install.projectRoot) {
-            continue;
-          }
-          const existing = projectSkills.get(install.projectRoot) ?? [];
-          if (!existing.includes(skill.name)) {
-            existing.push(skill.name);
-            projectSkills.set(install.projectRoot, existing);
-          }
-        }
-      }
-
-      const projects = projectsIndex.projects.map((project) => ({
-        ...project,
-        skills: projectSkills.get(project.root) ?? []
-      }));
-
-      if (isJsonEnabled(options)) {
-        printJson({
-          ok: true,
-          command: "project list",
-          data: {
-            projects
-          }
-        });
-        return;
-      }
-
-      printInfo(`Projects: ${projects.length}`);
-      for (const entry of projects) {
-        const skills = entry.skills ?? [];
-        const label = skills.length > 0 ? ` (${skills.length} skills)` : "";
-        printInfo(`- ${entry.root}${label}`);
-        for (const skillName of skills) {
-          printInfo(`  - ${skillName}`);
-        }
-      }
-    });
-
-  project
-    .command("inspect")
-    .argument("<path>", "Project path")
-    .option("--json", "JSON output")
-    .action(async (inputPath, options) => {
-      const projectsIndex = await loadProjects();
       const skillIndex = await loadIndex();
       const resolved = path.resolve(inputPath);
+
       const project = projectsIndex.projects.find((entry) => entry.root === resolved);
 
       if (!project) {
@@ -185,5 +137,57 @@ export const registerProject = (program: Command): void => {
           printInfo(`- ${skillName}`);
         }
       }
+    });
+
+  project
+    .command("sync")
+    .argument("<path>", "Project path")
+    .option("--json", "JSON output")
+    .action(async (inputPath, options) => {
+      const projectsIndex = await loadProjects();
+      const skillIndex = await loadIndex();
+      const resolved = path.resolve(inputPath);
+
+      const skills = skillIndex.skills.filter((skill) =>
+        (skill.installs ?? []).some(
+          (install) => install.scope === "project" && install.projectRoot === resolved
+        )
+      );
+
+      if (skills.length === 0) {
+        const message = `No skills recorded for project: ${resolved}`;
+        if (isJsonEnabled(options)) {
+          printJson({ ok: false, command: "project sync", error: { message } });
+          return;
+        }
+        printError(message);
+        return;
+      }
+
+      const installPaths = new Map<string, string[]>();
+      for (const skill of skills) {
+        const paths = (skill.installs ?? [])
+          .filter((install) => install.scope === "project" && install.projectRoot === resolved)
+          .map((install) => install.path);
+        installPaths.set(skill.name, paths);
+      }
+
+      for (const [skillName, paths] of installPaths.entries()) {
+        await copySkillToInstallPaths(skillName, paths);
+      }
+
+      if (isJsonEnabled(options)) {
+        printJson({
+          ok: true,
+          command: "project sync",
+          data: {
+            root: resolved,
+            skills: Array.from(installPaths.keys()).sort()
+          }
+        });
+        return;
+      }
+
+      printInfo(`Synced ${installPaths.size} skill(s) for ${resolved}`);
     });
 };

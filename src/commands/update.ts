@@ -5,12 +5,14 @@ import { fetchText } from "../lib/fetcher.js";
 import { parseSkillMarkdown, buildMetadata } from "../lib/skill-parser.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { copySkillToInstallPaths } from "../lib/sync.js";
+import path from "node:path";
 
 export const registerUpdate = (program: Command): void => {
   program
     .command("update")
     .argument("[name]", "Skill name")
     .option("--system", "Allow system-scope updates")
+    .option("--project <path>", "Only update installs for a project")
     .option("--json", "JSON output")
     .action(async (name, options) => {
       try {
@@ -25,6 +27,8 @@ export const registerUpdate = (program: Command): void => {
 
         const updated: string[] = [];
         await ensureSkillsDir();
+
+        const projectRoot = options.project ? path.resolve(options.project) : null;
 
         for (const skill of targets) {
           if (skill.source.type !== "url" || !skill.source.url) {
@@ -43,6 +47,7 @@ export const registerUpdate = (program: Command): void => {
 
           const installPaths = (skill.installs ?? [])
             .filter((install) => options.system || install.scope !== "system")
+            .filter((install) => !projectRoot || install.projectRoot === projectRoot)
             .map((install) => install.path);
 
           if (installPaths.length > 0) {
@@ -69,6 +74,7 @@ export const registerUpdate = (program: Command): void => {
             data: {
               name: name ?? null,
               system: Boolean(options.system),
+              project: projectRoot,
               updated
             }
           });
