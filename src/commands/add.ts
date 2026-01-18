@@ -4,10 +4,12 @@ import { fetchText } from "../lib/fetcher.js";
 import { parseSkillMarkdown, inferNameFromUrl, buildMetadata } from "../lib/skill-parser.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
-import { agentPaths, allAgents } from "../lib/agents.js";
+import { allAgents } from "../lib/agents.js";
 import { buildTargets, copySkillToTargets } from "../lib/sync.js";
 import { findProjectRoot } from "../lib/project-root.js";
 import type { AgentId } from "../lib/agents.js";
+import { loadProjects, findProject } from "../lib/projects.js";
+import { buildProjectAgentPaths } from "../lib/project-paths.js";
 
 export const registerAdd = (program: Command): void => {
   program
@@ -55,7 +57,9 @@ export const registerAdd = (program: Command): void => {
           ? options.agents.split(",").map((agent: string) => agent.trim() as AgentId).filter(Boolean)
           : allAgents;
 
-        const paths = agentPaths(projectRoot);
+        const projects = await loadProjects();
+        const projectEntry = findProject(projects, projectRoot);
+        const paths = buildProjectAgentPaths(projectRoot, projectEntry);
         const installed: { agent: string; scope: string; targets: string[] }[] = [];
         const installs = [] as Array<{ scope: "user" | "project"; agent: string; path: string; projectRoot?: string }>;
 

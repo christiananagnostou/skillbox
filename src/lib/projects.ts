@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import { skillboxProjectsPath, skillboxRoot } from "./paths.js";
-import type { ProjectIndex } from "./types.js";
+import type { ProjectEntry, ProjectIndex } from "./types.js";
 
 const emptyProjects = (): ProjectIndex => ({ version: 1, projects: [] });
 
@@ -29,4 +29,8 @@ export const upsertProject = (index: ProjectIndex, root: string): ProjectIndex =
     return index;
   }
   return { ...index, projects: [...index.projects, { root }] };
+};
+
+export const findProject = (index: ProjectIndex, root: string): ProjectEntry | undefined => {
+  return index.projects.find((project) => project.root === root);
 };

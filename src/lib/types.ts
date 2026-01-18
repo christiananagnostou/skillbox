@@ -48,7 +48,7 @@ export type SkillIndex = {
 
 export type ProjectEntry = {
   root: string;
-  agentPaths?: Record<string, string>;
+  agentPaths?: Record<string, string[]>;
   skills?: string[];
 };
 
