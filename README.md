@@ -23,15 +23,6 @@ npm run build
 npm link --global
 ```
 
-### Homebrew
-
-```bash
-brew tap christiananagnostou/skillbox
-brew install skillbox
-```
-
-TODO: Homebrew formula publishing
-
 ## CI
 
 ```bash
@@ -40,7 +31,6 @@ npm run format:check
 npm run build
 ```
 
-TODO: Publish GitHub Actions badge
 
 ## Quick Start
 
