@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import path from "node:path";
 import { skillboxIndexPath, skillboxRoot } from "./paths.js";
 import type { SkillIndex } from "./types.js";
 

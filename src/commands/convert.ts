@@ -38,13 +38,17 @@ export const registerConvert = (program: Command): void => {
           entry: "SKILL.md",
           source: { type: "url", url },
           checksum: "draft",
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         };
 
         await fs.mkdir(outputDir, { recursive: true });
         await fs.writeFile(path.join(outputDir, "source.txt"), sourceText, "utf8");
         await fs.writeFile(path.join(outputDir, "SKILL.md"), draftMarkdown, "utf8");
-        await fs.writeFile(path.join(outputDir, "skill.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+        await fs.writeFile(
+          path.join(outputDir, "skill.json"),
+          `${JSON.stringify(metadata, null, 2)}\n`,
+          "utf8"
+        );
 
         if (isJsonEnabled(options)) {
           printJson({
@@ -55,8 +59,8 @@ export const registerConvert = (program: Command): void => {
               name: skillName,
               outputDir,
               agent: Boolean(options.agent),
-              sourceLength: sourceText.length
-            }
+              sourceLength: sourceText.length,
+            },
           });
           return;
         }

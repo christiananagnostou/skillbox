@@ -45,12 +45,12 @@ export const registerProject = (program: Command): void => {
             if (project.root !== resolved) {
               return project;
             }
-            const nextPaths = { ...(project.agentPaths ?? {}) };
+            const nextPaths = project.agentPaths ? { ...project.agentPaths } : {};
             for (const [agent, paths] of Object.entries(overrides)) {
               nextPaths[agent] = paths;
             }
             return { ...project, agentPaths: nextPaths };
-          })
+          }),
         };
 
         await saveProjects(merged);
@@ -61,8 +61,9 @@ export const registerProject = (program: Command): void => {
             command: "project add",
             data: {
               path: resolved,
-              agentPaths: merged.projects.find((project) => project.root === resolved)?.agentPaths ?? {}
-            }
+              agentPaths:
+                merged.projects.find((project) => project.root === resolved)?.agentPaths ?? {},
+            },
           });
           return;
         }
@@ -83,7 +84,7 @@ export const registerProject = (program: Command): void => {
 
       const projects = projectsIndex.projects.map((project) => ({
         ...project,
-        skills: projectSkills.get(project.root) ?? []
+        skills: projectSkills.get(project.root) ?? [],
       }));
 
       if (isJsonEnabled(options)) {
@@ -91,8 +92,8 @@ export const registerProject = (program: Command): void => {
           ok: true,
           command: "project list",
           data: {
-            projects
-          }
+            projects,
+          },
         });
         return;
       }
@@ -119,7 +120,11 @@ export const registerProject = (program: Command): void => {
       const project = projectsIndex.projects.find((entry) => entry.root === resolved);
 
       if (!project) {
-        handleCommandError(options, "project inspect", new Error(`Project not registered: ${resolved}`));
+        handleCommandError(
+          options,
+          "project inspect",
+          new Error(`Project not registered: ${resolved}`)
+        );
         return;
       }
 
@@ -127,14 +132,14 @@ export const registerProject = (program: Command): void => {
       const data = {
         root: project.root,
         agentPaths: project.agentPaths ?? {},
-        skills
+        skills,
       };
 
       if (isJsonEnabled(options)) {
         printJson({
           ok: true,
           command: "project inspect",
-          data
+          data,
         });
         return;
       }
@@ -169,7 +174,11 @@ export const registerProject = (program: Command): void => {
       const installPaths = getProjectInstallPaths(skillIndex.skills, resolved);
 
       if (installPaths.size === 0) {
-        handleCommandError(options, "project sync", new Error(`No skills recorded for project: ${resolved}`));
+        handleCommandError(
+          options,
+          "project sync",
+          new Error(`No skills recorded for project: ${resolved}`)
+        );
         return;
       }
 
@@ -183,8 +192,8 @@ export const registerProject = (program: Command): void => {
           command: "project sync",
           data: {
             root: resolved,
-            skills: Array.from(installPaths.keys()).sort()
-          }
+            skills: Array.from(installPaths.keys()).sort(),
+          },
         });
         return;
       }

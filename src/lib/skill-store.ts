@@ -20,7 +20,11 @@ export const writeSkillFiles = async (
   const targetDir = skillDir(name);
   await fs.mkdir(targetDir, { recursive: true });
   await fs.writeFile(path.join(targetDir, "SKILL.md"), `${skillMarkdown}\n`, "utf8");
-  await fs.writeFile(path.join(targetDir, "skill.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+  await fs.writeFile(
+    path.join(targetDir, "skill.json"),
+    `${JSON.stringify(metadata, null, 2)}\n`,
+    "utf8"
+  );
 };
 
 export const readSkillMetadata = async (name: string): Promise<SkillMetadata> => {
@@ -31,7 +35,11 @@ export const readSkillMetadata = async (name: string): Promise<SkillMetadata> =>
 
 export const writeSkillMetadata = async (name: string, metadata: SkillMetadata): Promise<void> => {
   const targetDir = skillDir(name);
-  await fs.writeFile(path.join(targetDir, "skill.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+  await fs.writeFile(
+    path.join(targetDir, "skill.json"),
+    `${JSON.stringify(metadata, null, 2)}\n`,
+    "utf8"
+  );
 };
 
 export const hashContent = (content: string): string => {

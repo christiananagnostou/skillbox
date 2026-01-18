@@ -43,7 +43,7 @@ export const registerConfig = (program: Command): void => {
           ...current,
           defaultAgents: options.defaultAgent ?? current.defaultAgents,
           defaultScope: nextScope,
-          manageSystem: options.manageSystem ?? current.manageSystem
+          manageSystem: options.manageSystem ?? current.manageSystem,
         };
 
         await saveConfig(next);

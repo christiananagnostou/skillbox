@@ -32,7 +32,7 @@ export const registerStatus = (program: Command): void => {
             .map((install) => install.projectRoot as string);
 
           const allowSystem = config.manageSystem;
-          const isSystem = skill.source.type === "system";
+          const isSystem = (skill.installs ?? []).some((install) => install.scope === "system");
           if (isSystem && !allowSystem) {
             results.push({
               name: skill.name,
@@ -40,7 +40,7 @@ export const registerStatus = (program: Command): void => {
               outdated: false,
               localChecksum: skill.checksum,
               projects,
-              system: true
+              system: true,
             });
             continue;
           }
@@ -52,7 +52,7 @@ export const registerStatus = (program: Command): void => {
               outdated: false,
               localChecksum: skill.checksum,
               projects,
-              system: isSystem
+              system: isSystem,
             });
             continue;
           }
@@ -69,7 +69,7 @@ export const registerStatus = (program: Command): void => {
             localChecksum: skill.checksum,
             remoteChecksum,
             projects,
-            system: false
+            system: false,
           });
         }
 
@@ -90,8 +90,8 @@ export const registerStatus = (program: Command): void => {
               upToDate,
               results,
               projects: options.group === "project" ? groupedProjects : undefined,
-              sources: options.group === "source" ? groupedSources : undefined
-            }
+              sources: options.group === "source" ? groupedSources : undefined,
+            },
           });
           return;
         }
@@ -132,14 +132,20 @@ export const registerStatus = (program: Command): void => {
     });
 };
 
-const groupByProject = (results: Array<{ name: string; outdated: boolean; projects: string[] }>) => {
+const groupByProject = (
+  results: Array<{ name: string; outdated: boolean; projects: string[] }>
+) => {
   const grouped = groupStatusByKey(
     results,
     (result) => result.name,
     (result) => result.outdated,
     (result) => result.projects
   );
-  return grouped.map((group) => ({ root: group.key, outdated: group.outdated, upToDate: group.upToDate }));
+  return grouped.map((group) => ({
+    root: group.key,
+    outdated: group.outdated,
+    upToDate: group.upToDate,
+  }));
 };
 
 const groupBySource = (results: Array<{ name: string; outdated: boolean; source: string }>) => {
@@ -149,5 +155,9 @@ const groupBySource = (results: Array<{ name: string; outdated: boolean; source:
     (result) => result.outdated,
     (result) => [result.source]
   );
-  return grouped.map((group) => ({ source: group.key, outdated: group.outdated, upToDate: group.upToDate }));
+  return grouped.map((group) => ({
+    source: group.key,
+    outdated: group.outdated,
+    upToDate: group.upToDate,
+  }));
 };
