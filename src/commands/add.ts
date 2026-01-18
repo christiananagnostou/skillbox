@@ -48,7 +48,6 @@ export const registerAdd = (program: Command): void => {
           checksum: parsed.checksum,
           updatedAt: metadata.updatedAt
         });
-        await saveIndex(sortIndex(updated));
 
         const projectRoot = await findProjectRoot(process.cwd());
         const scope = options.global ? "user" : "project";
@@ -58,6 +57,7 @@ export const registerAdd = (program: Command): void => {
 
         const paths = agentPaths(projectRoot);
         const installed: { agent: string; scope: string; targets: string[] }[] = [];
+        const installs = [] as Array<{ scope: "user" | "project"; agent: string; path: string; projectRoot?: string }>;
 
         for (const agent of agentList) {
           const map = paths[agent];
@@ -67,7 +67,24 @@ export const registerAdd = (program: Command): void => {
           const targets = buildTargets(agent, map, scope).map((target) => target.path);
           const written = await copySkillToTargets(skillName, targets);
           installed.push({ agent, scope, targets: written });
+          for (const target of written) {
+            installs.push({
+              scope,
+              agent,
+              path: target,
+              projectRoot: scope === "project" ? projectRoot : undefined
+            });
+          }
         }
+
+        const nextIndex = upsertSkill(updated, {
+          name: skillName,
+          source: { type: "url", url },
+          checksum: parsed.checksum,
+          updatedAt: metadata.updatedAt,
+          installs
+        });
+        await saveIndex(sortIndex(nextIndex));
 
         if (isJsonEnabled(options)) {
           printJson({
