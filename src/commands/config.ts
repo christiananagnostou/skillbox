@@ -1,6 +1,7 @@
 import type { Command } from "commander";
-import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.js";
+import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { loadConfig, saveConfig } from "../lib/config.js";
+import { handleCommandError } from "../lib/command.js";
 
 const collect = (value: string, previous: string[] = []): string[] => {
   return [...previous, value];
@@ -21,12 +22,7 @@ export const registerConfig = (program: Command): void => {
         }
         printInfo(JSON.stringify(current, null, 2));
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unexpected error";
-        if (isJsonEnabled(options)) {
-          printJson({ ok: false, command: "config get", error: { message } });
-          return;
-        }
-        printError(message);
+        handleCommandError(options, "config get", error);
       }
     });
 
@@ -59,12 +55,7 @@ export const registerConfig = (program: Command): void => {
 
         printInfo("Config updated.");
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unexpected error";
-        if (isJsonEnabled(options)) {
-          printJson({ ok: false, command: "config set", error: { message } });
-          return;
-        }
-        printError(message);
+        handleCommandError(options, "config set", error);
       }
     });
 };

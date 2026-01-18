@@ -1,7 +1,8 @@
 import type { Command } from "commander";
-import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.js";
+import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { readSkillMetadata, writeSkillMetadata } from "../lib/skill-store.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
+import { handleCommandError } from "../lib/command.js";
 
 export const registerMeta = (program: Command): void => {
   const meta = program.command("meta").description("Manage skill metadata");
@@ -57,12 +58,7 @@ export const registerMeta = (program: Command): void => {
 
         printInfo(`Updated metadata for ${name}`);
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unexpected error";
-        if (isJsonEnabled(options)) {
-          printJson({ ok: false, command: "meta set", error: { message } });
-          return;
-        }
-        printError(message);
+        handleCommandError(options, "meta set", error);
       }
     });
 };

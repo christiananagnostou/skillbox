@@ -1,10 +1,11 @@
 import type { Command } from "commander";
-import { isJsonEnabled, printError, printInfo, printJson, printList } from "../lib/output.js";
+import { isJsonEnabled, printInfo, printJson, printList } from "../lib/output.js";
 import { loadIndex, saveIndex } from "../lib/index.js";
 import { fetchText } from "../lib/fetcher.js";
 import { hashContent } from "../lib/skill-store.js";
 import { groupStatusByKey } from "../lib/grouping.js";
 import { loadConfig } from "../lib/config.js";
+import { handleCommandError } from "../lib/command.js";
 
 export const registerStatus = (program: Command): void => {
   program
@@ -126,12 +127,7 @@ export const registerStatus = (program: Command): void => {
         printList("Outdated", outdated);
         printList("Up to date", upToDate);
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unexpected error";
-        if (isJsonEnabled(options)) {
-          printJson({ ok: false, command: "status", error: { message } });
-          return;
-        }
-        printError(message);
+        handleCommandError(options, "status", error);
       }
     });
 };

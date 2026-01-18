@@ -1,10 +1,11 @@
 import type { Command } from "commander";
 import path from "node:path";
-import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.js";
+import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { loadProjects, saveProjects, upsertProject } from "../lib/projects.js";
 import { loadIndex } from "../lib/index.js";
 import { copySkillToInstallPaths } from "../lib/sync.js";
 import { collectProjectSkills, getProjectInstallPaths, getProjectSkills } from "../lib/installs.js";
+import { handleCommandError } from "../lib/command.js";
 
 const collect = (value: string, previous: string[] = []): string[] => {
   return [...previous, value];
@@ -68,12 +69,7 @@ export const registerProject = (program: Command): void => {
 
         printInfo(`Project registered: ${resolved}`);
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unexpected error";
-        if (isJsonEnabled(options)) {
-          printJson({ ok: false, command: "project add", error: { message } });
-          return;
-        }
-        printError(message);
+        handleCommandError(options, "project add", error);
       }
     });
 
@@ -123,12 +119,7 @@ export const registerProject = (program: Command): void => {
       const project = projectsIndex.projects.find((entry) => entry.root === resolved);
 
       if (!project) {
-        const message = `Project not registered: ${resolved}`;
-        if (isJsonEnabled(options)) {
-          printJson({ ok: false, command: "project inspect", error: { message } });
-          return;
-        }
-        printError(message);
+        handleCommandError(options, "project inspect", new Error(`Project not registered: ${resolved}`));
         return;
       }
 
@@ -178,12 +169,7 @@ export const registerProject = (program: Command): void => {
       const installPaths = getProjectInstallPaths(skillIndex.skills, resolved);
 
       if (installPaths.size === 0) {
-        const message = `No skills recorded for project: ${resolved}`;
-        if (isJsonEnabled(options)) {
-          printJson({ ok: false, command: "project sync", error: { message } });
-          return;
-        }
-        printError(message);
+        handleCommandError(options, "project sync", new Error(`No skills recorded for project: ${resolved}`));
         return;
       }
 

@@ -1,9 +1,10 @@
 import type { Command } from "commander";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.js";
+import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { fetchText } from "../lib/fetcher.js";
 import { inferNameFromUrl } from "../lib/skill-parser.js";
+import { handleCommandError } from "../lib/command.js";
 
 export const registerConvert = (program: Command): void => {
   program
@@ -65,12 +66,7 @@ export const registerConvert = (program: Command): void => {
           printInfo("Agent mode enabled. Use the source.txt content to refine SKILL.md.");
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unexpected error";
-        if (isJsonEnabled(options)) {
-          printJson({ ok: false, command: "convert", error: { message } });
-          return;
-        }
-        printError(message);
+        handleCommandError(options, "convert", error);
       }
     });
 };

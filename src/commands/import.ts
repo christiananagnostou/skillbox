@@ -1,10 +1,11 @@
 import type { Command } from "commander";
 import path from "node:path";
 import fs from "node:fs/promises";
-import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.js";
+import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { parseSkillMarkdown, buildMetadata } from "../lib/skill-parser.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
+import { handleCommandError } from "../lib/command.js";
 
 export const registerImport = (program: Command): void => {
   program
@@ -49,12 +50,7 @@ export const registerImport = (program: Command): void => {
 
         printInfo(`Imported skill: ${metadata.name}`);
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unexpected error";
-        if (isJsonEnabled(options)) {
-          printJson({ ok: false, command: "import", error: { message } });
-          return;
-        }
-        printError(message);
+        handleCommandError(options, "import", error);
       }
     });
 };
