@@ -71,3 +71,9 @@ export const allAgents: AgentId[] = [
   "amp",
   "antigravity"
 ];
+
+const agentSet = new Set(allAgents);
+
+export const isAgentId = (value: string): value is AgentId => {
+  return agentSet.has(value as AgentId);
+};

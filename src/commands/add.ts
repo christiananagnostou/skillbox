@@ -49,7 +49,10 @@ export const registerAdd = (program: Command): void => {
           updatedAt: metadata.updatedAt
         });
 
-        const { projectRoot, scope, agentList } = await resolveRuntime(options);
+        const { projectRoot, scope, agentList } = await resolveRuntime({
+          global: options.global,
+          agents: options.agents
+        });
         const projectEntry = await ensureProjectRegistered(projectRoot, scope);
         const paths = buildProjectAgentPaths(projectRoot, projectEntry);
         const installed: { agent: string; scope: string; targets: string[] }[] = [];

@@ -1,8 +1,8 @@
 import type { AgentId } from "./agents.js";
-import { allAgents } from "./agents.js";
 import { loadConfig } from "./config.js";
 import { findProjectRoot } from "./project-root.js";
 import { loadProjects, findProject, saveProjects, upsertProject } from "./projects.js";
+import { resolveAgentList } from "./options.js";
 
 export type ResolvedRuntime = {
   projectRoot: string;
@@ -17,11 +17,7 @@ export const resolveRuntime = async (options: {
   const projectRoot = await findProjectRoot(process.cwd());
   const config = await loadConfig();
   const scope = options.global ? "user" : config.defaultScope ?? "project";
-  const agentList: AgentId[] = options.agents
-    ? options.agents.split(",").map((agent: string) => agent.trim() as AgentId).filter(Boolean)
-    : config.defaultAgents.length > 0
-      ? config.defaultAgents.map((agent) => agent as AgentId)
-      : allAgents;
+  const agentList = resolveAgentList(options.agents, config);
 
   return { projectRoot, scope, agentList };
 };
