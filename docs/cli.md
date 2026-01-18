@@ -1,0 +1,180 @@
+# Skillbox CLI Reference (Agent-Friendly)
+
+This document defines the CLI surface for Skillbox. Commands are designed to be deterministic and easy for agents to use. All commands support --json for machine-readable output.
+
+## Global Flags
+
+- --json: Output structured JSON for agent consumption.
+- --global: Apply to user scope instead of project scope.
+- --agents <list>: Comma-separated list of agents to target.
+- --system: Enable system-scope management (e.g., /etc/codex/skills).
+
+## Golden Workflow (Agent-Friendly)
+
+1. List skills
+   - skillbox list --json
+2. Check for outdated skills
+   - skillbox status --json
+3. Update a skill
+   - skillbox update <name> --json
+
+## Commands
+
+### skillbox add <url>
+
+Install a skill from a URL and sync it to agent folders.
+
+Examples:
+
+- skillbox add https://example.com/skill/SKILL.md
+- skillbox add https://example.com/skill/SKILL.md --name my-skill
+- skillbox add https://example.com/skill/ --name my-skill --agents claude,cursor
+- skillbox add https://example.com/skill/SKILL.md --global
+
+Behavior:
+
+- Validates that the URL points to a valid skill (SKILL.md or repo).
+- If name cannot be inferred, requires --name.
+- Generates skill.json in canonical store.
+- Syncs to default agent targets unless --agents is provided.
+- Defaults to project scope unless --global is passed.
+
+### skillbox convert <url>
+
+Convert arbitrary content into a skill. This is designed for agent usage. The agent is expected to transform the content into SKILL.md + metadata.
+
+Examples:
+
+- skillbox convert https://example.com/blog-post
+- skillbox convert https://example.com/blog-post --agent
+
+Behavior:
+
+- Fetches content.
+- If --agent is set, delegates conversion to the active agent.
+- Outputs SKILL.md draft and metadata for confirmation.
+
+### skillbox list
+
+List all known skills across user + project scopes.
+
+Examples:
+
+- skillbox list
+- skillbox list --group=category
+- skillbox list --group=namespace
+- skillbox list --group=source
+- skillbox list --group=project
+- skillbox list --json
+
+### skillbox status
+
+Check for outdated skills by comparing local checksums to remote sources.
+
+Examples:
+
+- skillbox status
+- skillbox status --json
+
+Output includes:
+
+- name
+- source type
+- current checksum
+- remote checksum
+- outdated: true/false
+
+### skillbox update [name]
+
+Update one skill or all outdated skills.
+
+Examples:
+
+- skillbox update
+- skillbox update my-skill
+- skillbox update --system
+
+Behavior:
+
+- Updates canonical store first, then overwrites agent copies.
+- Skips system scope unless --system is passed.
+
+### skillbox import <path>
+
+Import an existing skill directory into Skillbox index.
+
+Examples:
+
+- skillbox import .claude/skills/my-skill
+- skillbox import /path/to/skill
+
+### skillbox meta set <name>
+
+Set metadata fields for a skill.
+
+Examples:
+
+- skillbox meta set my-skill --category docs --category testing
+- skillbox meta set my-skill --tag internal --tag format
+- skillbox meta set my-skill --namespace team-ai
+
+### skillbox project add <path>
+
+Register a project and its agent skill paths.
+
+Examples:
+
+- skillbox project add /path/to/repo
+
+### skillbox project list
+
+List tracked projects and their installed skills.
+
+Examples:
+
+- skillbox project list
+- skillbox project list --json
+
+## JSON Output Contract (Draft)
+
+All commands with --json return:
+
+```
+{
+  "ok": true,
+  "command": "list",
+  "data": ...
+}
+```
+
+If an error occurs:
+
+```
+{
+  "ok": false,
+  "command": "list",
+  "error": {
+    "message": "string",
+    "code": "string"
+  }
+}
+```
+
+Fields in data are stable and documented per command in future versions.
+
+## Agent Usage Snippet (AGENTS.md / CLAUDE.md)
+
+```
+Use skillbox for skill management.
+
+Common workflow:
+1) skillbox list --json
+2) skillbox status --json
+3) skillbox update <name> --json
+
+If you need to install a new skill from a URL, run:
+skillbox add <url> [--name <name>]
+
+If a URL is not a valid skill, run:
+skillbox convert <url> --agent
+```
