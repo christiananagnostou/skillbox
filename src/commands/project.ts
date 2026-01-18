@@ -144,7 +144,6 @@ export const registerProject = (program: Command): void => {
     .argument("<path>", "Project path")
     .option("--json", "JSON output")
     .action(async (inputPath, options) => {
-      const projectsIndex = await loadProjects();
       const skillIndex = await loadIndex();
       const resolved = path.resolve(inputPath);
 

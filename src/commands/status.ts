@@ -3,6 +3,7 @@ import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.j
 import { loadIndex, saveIndex } from "../lib/index.js";
 import { fetchText } from "../lib/fetcher.js";
 import { hashContent } from "../lib/skill-store.js";
+import { loadConfig } from "../lib/config.js";
 
 export const registerStatus = (program: Command): void => {
   program
@@ -12,6 +13,7 @@ export const registerStatus = (program: Command): void => {
     .action(async (options) => {
       try {
         const index = await loadIndex();
+        const config = await loadConfig();
         const results = [] as Array<{
           name: string;
           source: string;
@@ -19,6 +21,8 @@ export const registerStatus = (program: Command): void => {
           localChecksum: string;
           remoteChecksum?: string;
           projects: string[];
+          system: boolean;
+          systemManaged: boolean;
         }>;
 
         for (const skill of index.skills) {
@@ -26,13 +30,30 @@ export const registerStatus = (program: Command): void => {
             .filter((install) => install.scope === "project" && install.projectRoot)
             .map((install) => install.projectRoot as string);
 
+          const allowSystem = config.manageSystem;
+          const isSystem = skill.source.type === "system";
+          if (isSystem && !allowSystem) {
+            results.push({
+              name: skill.name,
+              source: skill.source.type,
+              outdated: false,
+              localChecksum: skill.checksum,
+              projects,
+              system: true,
+              systemManaged: false
+            });
+            continue;
+          }
+
           if (skill.source.type !== "url" || !skill.source.url) {
             results.push({
               name: skill.name,
               source: skill.source.type,
               outdated: false,
               localChecksum: skill.checksum,
-              projects
+              projects,
+              system: isSystem,
+              systemManaged: allowSystem && isSystem
             });
             continue;
           }
@@ -48,7 +69,9 @@ export const registerStatus = (program: Command): void => {
             outdated,
             localChecksum: skill.checksum,
             remoteChecksum,
-            projects
+            projects,
+            system: false,
+            systemManaged: false
           });
         }
 

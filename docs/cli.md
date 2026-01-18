@@ -81,7 +81,7 @@ Examples:
 
 ### skillbox status
 
-Check for outdated skills by comparing local checksums to remote sources. Use --group to view by project or source.
+Check for outdated skills by comparing local checksums to remote sources. Use --group to view by project or source. System skills are skipped unless manageSystem is enabled in config.
 
 Examples:
 

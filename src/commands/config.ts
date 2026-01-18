@@ -39,10 +39,14 @@ export const registerConfig = (program: Command): void => {
     .action(async (options) => {
       try {
         const current = await loadConfig();
+        const nextScope = options.defaultScope ?? current.defaultScope;
+        if (nextScope !== "project" && nextScope !== "user") {
+          throw new Error("defaultScope must be 'project' or 'user'.");
+        }
         const next = {
           ...current,
           defaultAgents: options.defaultAgent ?? current.defaultAgents,
-          defaultScope: options.defaultScope ?? current.defaultScope,
+          defaultScope: nextScope,
           manageSystem: options.manageSystem ?? current.manageSystem
         };
 
