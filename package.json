@@ -5,17 +5,35 @@
   "license": "MIT",
   "author": "Christian Anagnostou",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/christiananagnostou/skillbox.git"
+  },
+  "homepage": "https://github.com/christiananagnostou/skillbox",
+  "bugs": {
+    "url": "https://github.com/christiananagnostou/skillbox/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "skillbox": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "ts-node-esm src/cli.ts",
+    "prepare": "npm run build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "lint:ci": "oxlint --deny-warnings",
     "format": "oxfmt",
-    "format:check": "oxfmt --check"
+    "format:check": "oxfmt --check",
+    "prepublishOnly": "npm run lint:ci && npm run format:check && npm run build"
   },
   "dependencies": {
     "chalk": "^5.3.0",
