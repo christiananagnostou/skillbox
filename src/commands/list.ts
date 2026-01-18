@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
+import { isJsonEnabled, printInfo, printJson, printGroupList } from "../lib/output.js";
 import { loadIndex } from "../lib/index.js";
 import { groupNamesByKey } from "../lib/grouping.js";
 
@@ -33,46 +33,34 @@ export const registerList = (program: Command): void => {
       }
 
       if (options.group === "project") {
-        printInfo(`Projects: ${groupedProjects.length}`);
-        for (const project of groupedProjects) {
-          printInfo(`- ${project.root}`);
-          for (const skillName of project.skills) {
-            printInfo(`  - ${skillName}`);
-          }
-        }
+        printGroupList(
+          "Projects",
+          groupedProjects.map((project) => ({ key: project.root, items: project.skills }))
+        );
         return;
       }
 
       if (options.group === "source") {
-        printInfo(`Sources: ${groupedSources.length}`);
-        for (const source of groupedSources) {
-          printInfo(`- ${source.source}`);
-          for (const skillName of source.skills) {
-            printInfo(`  - ${skillName}`);
-          }
-        }
+        printGroupList(
+          "Sources",
+          groupedSources.map((source) => ({ key: source.source, items: source.skills }))
+        );
         return;
       }
 
       if (options.group === "namespace") {
-        printInfo(`Namespaces: ${groupedNamespaces.length}`);
-        for (const namespace of groupedNamespaces) {
-          printInfo(`- ${namespace.namespace}`);
-          for (const skillName of namespace.skills) {
-            printInfo(`  - ${skillName}`);
-          }
-        }
+        printGroupList(
+          "Namespaces",
+          groupedNamespaces.map((namespace) => ({ key: namespace.namespace, items: namespace.skills }))
+        );
         return;
       }
 
       if (options.group === "category") {
-        printInfo(`Categories: ${groupedCategories.length}`);
-        for (const category of groupedCategories) {
-          printInfo(`- ${category.category}`);
-          for (const skillName of category.skills) {
-            printInfo(`  - ${skillName}`);
-          }
-        }
+        printGroupList(
+          "Categories",
+          groupedCategories.map((category) => ({ key: category.category, items: category.skills }))
+        );
         return;
       }
 

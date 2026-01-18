@@ -1,9 +1,8 @@
 import type { Command } from "commander";
-import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.js";
+import { isJsonEnabled, printError, printInfo, printJson, printList } from "../lib/output.js";
 import { loadIndex, saveIndex } from "../lib/index.js";
 import { fetchText } from "../lib/fetcher.js";
 import { hashContent } from "../lib/skill-store.js";
-import { loadConfig } from "../lib/config.js";
 import { groupStatusByKey } from "../lib/grouping.js";
 
 export const registerStatus = (program: Command): void => {
@@ -14,7 +13,6 @@ export const registerStatus = (program: Command): void => {
     .action(async (options) => {
       try {
         const index = await loadIndex();
-        const config = await loadConfig();
         const results = [] as Array<{
           name: string;
           source: string;
@@ -22,8 +20,6 @@ export const registerStatus = (program: Command): void => {
           localChecksum: string;
           remoteChecksum?: string;
           projects: string[];
-          system: boolean;
-          systemManaged: boolean;
         }>;
 
         for (const skill of index.skills) {
@@ -31,30 +27,13 @@ export const registerStatus = (program: Command): void => {
             .filter((install) => install.scope === "project" && install.projectRoot)
             .map((install) => install.projectRoot as string);
 
-          const allowSystem = config.manageSystem;
-          const isSystem = skill.source.type === "system";
-          if (isSystem && !allowSystem) {
-            results.push({
-              name: skill.name,
-              source: skill.source.type,
-              outdated: false,
-              localChecksum: skill.checksum,
-              projects,
-              system: true,
-              systemManaged: false
-            });
-            continue;
-          }
-
           if (skill.source.type !== "url" || !skill.source.url) {
             results.push({
               name: skill.name,
               source: skill.source.type,
               outdated: false,
               localChecksum: skill.checksum,
-              projects,
-              system: isSystem,
-              systemManaged: allowSystem && isSystem
+              projects
             });
             continue;
           }
@@ -70,9 +49,7 @@ export const registerStatus = (program: Command): void => {
             outdated,
             localChecksum: skill.checksum,
             remoteChecksum,
-            projects,
-            system: false,
-            systemManaged: false
+            projects
           });
         }
 
@@ -104,16 +81,10 @@ export const registerStatus = (program: Command): void => {
           for (const project of groupedProjects) {
             printInfo(`- ${project.root}`);
             if (project.outdated.length > 0) {
-              printInfo("  Outdated:");
-              for (const name of project.outdated) {
-                printInfo(`    - ${name}`);
-              }
+              printList("  Outdated", project.outdated, "    - ");
             }
             if (project.upToDate.length > 0) {
-              printInfo("  Up to date:");
-              for (const name of project.upToDate) {
-                printInfo(`    - ${name}`);
-              }
+              printList("  Up to date", project.upToDate, "    - ");
             }
           }
           return;
@@ -124,26 +95,17 @@ export const registerStatus = (program: Command): void => {
           for (const source of groupedSources) {
             printInfo(`- ${source.source}`);
             if (source.outdated.length > 0) {
-              printInfo("  Outdated:");
-              for (const name of source.outdated) {
-                printInfo(`    - ${name}`);
-              }
+              printList("  Outdated", source.outdated, "    - ");
             }
             if (source.upToDate.length > 0) {
-              printInfo("  Up to date:");
-              for (const name of source.upToDate) {
-                printInfo(`    - ${name}`);
-              }
+              printList("  Up to date", source.upToDate, "    - ");
             }
           }
           return;
         }
 
-        printInfo(`Outdated: ${outdated.length}`);
-        for (const name of outdated) {
-          printInfo(`- ${name}`);
-        }
-        printInfo(`Up to date: ${upToDate.length}`);
+        printList("Outdated", outdated);
+        printList("Up to date", upToDate);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unexpected error";
         if (isJsonEnabled(options)) {
