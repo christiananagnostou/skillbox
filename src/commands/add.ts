@@ -4,13 +4,9 @@ import { fetchText } from "../lib/fetcher.js";
 import { parseSkillMarkdown, inferNameFromUrl, buildMetadata } from "../lib/skill-parser.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
-import { allAgents } from "../lib/agents.js";
 import { buildTargets, copySkillToTargets } from "../lib/sync.js";
-import { findProjectRoot } from "../lib/project-root.js";
-import type { AgentId } from "../lib/agents.js";
-import { loadProjects, findProject, saveProjects, upsertProject } from "../lib/projects.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
-import { loadConfig } from "../lib/config.js";
+import { resolveRuntime, ensureProjectRegistered } from "../lib/runtime.js";
 
 export const registerAdd = (program: Command): void => {
   program
@@ -52,22 +48,8 @@ export const registerAdd = (program: Command): void => {
           updatedAt: metadata.updatedAt
         });
 
-        const projectRoot = await findProjectRoot(process.cwd());
-        const config = await loadConfig();
-        const scope = options.global ? "user" : config.defaultScope ?? "project";
-        const agentList: AgentId[] = options.agents
-          ? options.agents.split(",").map((agent: string) => agent.trim() as AgentId).filter(Boolean)
-          : config.defaultAgents.length > 0
-            ? config.defaultAgents.map((agent) => agent as AgentId)
-            : allAgents;
-
-        const projects = await loadProjects();
-        let projectEntry = findProject(projects, projectRoot);
-        if (!projectEntry && scope === "project") {
-          const merged = upsertProject(projects, projectRoot);
-          await saveProjects(merged);
-          projectEntry = findProject(merged, projectRoot);
-        }
+        const { projectRoot, scope, agentList } = await resolveRuntime(options);
+        const projectEntry = await ensureProjectRegistered(projectRoot, scope);
         const paths = buildProjectAgentPaths(projectRoot, projectEntry);
         const installed: { agent: string; scope: string; targets: string[] }[] = [];
         const installs = [] as Array<{ scope: "user" | "project"; agent: string; path: string; projectRoot?: string }>;
