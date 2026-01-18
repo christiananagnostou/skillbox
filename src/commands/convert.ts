@@ -27,7 +27,7 @@ export const registerConvert = (program: Command): void => {
           ? path.resolve(options.output)
           : path.join(process.cwd(), "skillbox-convert", skillName);
 
-        const description = "TODO: Describe when to use this skill.";
+        const description = "Draft skill generated from source content.";
         const draftMarkdown = `---\nname: ${skillName}\ndescription: ${description}\n---\n\n# ${skillName}\n\n## Source\n- See source.txt for the raw content.\n\n## When to use\n- TODO\n\n## Instructions\n- TODO\n`;
 
         const metadata = {
