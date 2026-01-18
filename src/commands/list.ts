@@ -10,6 +10,7 @@ export const registerList = (program: Command): void => {
     .action(async (options) => {
       const index = await loadIndex();
       const skills = index.skills;
+      const grouped = groupByProject(skills);
 
       if (isJsonEnabled(options)) {
         printJson({
@@ -17,9 +18,21 @@ export const registerList = (program: Command): void => {
           command: "list",
           data: {
             group: options.group ?? null,
-            skills
+            skills,
+            projects: options.group === "project" ? grouped : undefined
           }
         });
+        return;
+      }
+
+      if (options.group === "project") {
+        printInfo(`Projects: ${grouped.length}`);
+        for (const project of grouped) {
+          printInfo(`- ${project.root}`);
+          for (const skillName of project.skills) {
+            printInfo(`  - ${skillName}`);
+          }
+        }
         return;
       }
 
@@ -30,4 +43,23 @@ export const registerList = (program: Command): void => {
         printInfo(`- ${skill.name}${namespace} [${source}]`);
       }
     });
+};
+
+const groupByProject = (skills: Array<{ name: string; installs?: Array<{ projectRoot?: string; scope: string }> }>) => {
+  const map = new Map<string, string[]>();
+  for (const skill of skills) {
+    for (const install of skill.installs ?? []) {
+      if (install.scope !== "project" || !install.projectRoot) {
+        continue;
+      }
+      const existing = map.get(install.projectRoot) ?? [];
+      if (!existing.includes(skill.name)) {
+        existing.push(skill.name);
+        map.set(install.projectRoot, existing);
+      }
+    }
+  }
+  return Array.from(map.entries())
+    .map(([root, skillNames]) => ({ root, skills: skillNames.sort() }))
+    .sort((a, b) => a.root.localeCompare(b.root));
 };

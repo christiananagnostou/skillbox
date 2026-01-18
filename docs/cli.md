@@ -75,6 +75,7 @@ Examples:
 
 - skillbox status
 - skillbox status --json
+- skillbox status --group=project
 
 Output includes:
 
@@ -93,6 +94,7 @@ Examples:
 - skillbox update
 - skillbox update my-skill
 - skillbox update --system
+- skillbox update --project /path/to/repo
 
 Behavior:
 
@@ -134,6 +136,24 @@ Examples:
 
 - skillbox project list
 - skillbox project list --json
+
+### skillbox project inspect <path>
+
+Show a single project with agent path overrides and installed skills.
+
+Examples:
+
+- skillbox project inspect /path/to/repo
+- skillbox project inspect /path/to/repo --json
+
+### skillbox project sync <path>
+
+Re-copy canonical skills into a project’s agent skill paths.
+
+Examples:
+
+- skillbox project sync /path/to/repo
+- skillbox project sync /path/to/repo --json
 
 ## JSON Output Contract (Draft)
 
