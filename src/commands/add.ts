@@ -35,7 +35,9 @@ export const registerAdd = (program: Command): void => {
         const metadata = buildMetadata(parsed, { type: "url", url }, skillName);
 
         if (!parsed.description) {
-          throw new Error("Skill frontmatter missing description. Convert the source into a valid skill.");
+          throw new Error(
+            "Skill frontmatter missing description. Convert the source into a valid skill."
+          );
         }
 
         await ensureSkillsDir();
@@ -46,17 +48,22 @@ export const registerAdd = (program: Command): void => {
           name: skillName,
           source: { type: "url", url },
           checksum: parsed.checksum,
-          updatedAt: metadata.updatedAt
+          updatedAt: metadata.updatedAt,
         });
 
         const { projectRoot, scope, agentList } = await resolveRuntime({
           global: options.global,
-          agents: options.agents
+          agents: options.agents,
         });
         const projectEntry = await ensureProjectRegistered(projectRoot, scope);
         const paths = buildProjectAgentPaths(projectRoot, projectEntry);
         const installed: { agent: string; scope: string; targets: string[] }[] = [];
-        const installs = [] as Array<{ scope: "user" | "project"; agent: string; path: string; projectRoot?: string }>;
+        const installs = [] as Array<{
+          scope: "user" | "project";
+          agent: string;
+          path: string;
+          projectRoot?: string;
+        }>;
 
         for (const agent of agentList) {
           const map = paths[agent];
@@ -71,7 +78,7 @@ export const registerAdd = (program: Command): void => {
               scope,
               agent,
               path: target,
-              projectRoot: scope === "project" ? projectRoot : undefined
+              projectRoot: scope === "project" ? projectRoot : undefined,
             });
           }
         }
@@ -81,7 +88,7 @@ export const registerAdd = (program: Command): void => {
           source: { type: "url", url },
           checksum: parsed.checksum,
           updatedAt: metadata.updatedAt,
-          installs
+          installs,
         });
         await saveIndex(sortIndex(nextIndex));
 
@@ -93,8 +100,8 @@ export const registerAdd = (program: Command): void => {
               name: skillName,
               url,
               scope,
-              agents: installed
-            }
+              agents: installed,
+            },
           });
           return;
         }

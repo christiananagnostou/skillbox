@@ -26,8 +26,8 @@ export const registerAgent = (program: Command): void => {
           ok: true,
           command: "agent",
           data: {
-            snippet: agentSnippet
-          }
+            snippet: agentSnippet,
+          },
         });
         return;
       }

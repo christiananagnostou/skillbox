@@ -1,4 +1,3 @@
-import path from "node:path";
 import { hashContent } from "./skill-store.js";
 import type { SkillMetadata, SkillSource } from "./types.js";
 
@@ -39,7 +38,7 @@ export const parseSkillMarkdown = (markdown: string): ParsedSkill => {
     name,
     description,
     markdown,
-    checksum
+    checksum,
   };
 };
 
@@ -77,6 +76,6 @@ export const buildMetadata = (
     entry: "SKILL.md",
     source,
     checksum: parsed.checksum,
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
 };

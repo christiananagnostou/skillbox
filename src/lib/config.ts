@@ -13,7 +13,7 @@ const defaultConfig = (): SkillboxConfig => ({
   version: 1,
   defaultAgents: [],
   defaultScope: "project",
-  manageSystem: false
+  manageSystem: false,
 });
 
 export const configPath = (): string => path.join(skillboxRoot(), "config.json");

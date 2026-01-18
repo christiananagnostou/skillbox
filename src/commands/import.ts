@@ -32,7 +32,7 @@ export const registerImport = (program: Command): void => {
           name: metadata.name,
           source: { type: "local" },
           checksum: parsed.checksum,
-          updatedAt: metadata.updatedAt
+          updatedAt: metadata.updatedAt,
         });
         await saveIndex(sortIndex(updated));
 
@@ -42,8 +42,8 @@ export const registerImport = (program: Command): void => {
             command: "import",
             data: {
               name: metadata.name,
-              path: resolved
-            }
+              path: resolved,
+            },
           });
           return;
         }

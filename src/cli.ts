@@ -13,10 +13,7 @@ import { registerConfig } from "./commands/config.js";
 
 const program = new Command();
 
-program
-  .name("skillbox")
-  .description("Local-first, agent-agnostic skills manager")
-  .version("0.1.0");
+program.name("skillbox").description("Local-first, agent-agnostic skills manager").version("0.1.0");
 
 registerAdd(program);
 registerConvert(program);

@@ -26,8 +26,8 @@ export const registerList = (program: Command): void => {
             projects: options.group === "project" ? groupedProjects : undefined,
             sources: options.group === "source" ? groupedSources : undefined,
             namespaces: options.group === "namespace" ? groupedNamespaces : undefined,
-            categories: options.group === "category" ? groupedCategories : undefined
-          }
+            categories: options.group === "category" ? groupedCategories : undefined,
+          },
         });
         return;
       }
@@ -51,7 +51,10 @@ export const registerList = (program: Command): void => {
       if (options.group === "namespace") {
         printGroupList(
           "Namespaces",
-          groupedNamespaces.map((namespace) => ({ key: namespace.namespace, items: namespace.skills }))
+          groupedNamespaces.map((namespace) => ({
+            key: namespace.namespace,
+            items: namespace.skills,
+          }))
         );
         return;
       }
@@ -73,7 +76,9 @@ export const registerList = (program: Command): void => {
     });
 };
 
-const groupByProject = (skills: Array<{ name: string; installs?: Array<{ projectRoot?: string; scope: string }> }>) => {
+const groupByProject = (
+  skills: Array<{ name: string; installs?: Array<{ projectRoot?: string; scope: string }> }>
+) => {
   const grouped = groupNamesByKey(
     skills,
     (skill) => skill.name,

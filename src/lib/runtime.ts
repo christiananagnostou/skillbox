@@ -16,7 +16,7 @@ export const resolveRuntime = async (options: {
 }): Promise<ResolvedRuntime> => {
   const projectRoot = await findProjectRoot(process.cwd());
   const config = await loadConfig();
-  const scope = options.global ? "user" : config.defaultScope ?? "project";
+  const scope = options.global ? "user" : (config.defaultScope ?? "project");
   const agentList = resolveAgentList(options.agents, config);
 
   return { projectRoot, scope, agentList };

@@ -20,9 +20,7 @@ export const registerUpdate = (program: Command): void => {
       try {
         const index = await loadIndex();
         const config = await loadConfig();
-        const targets = name
-          ? index.skills.filter((skill) => skill.name === name)
-          : index.skills;
+        const targets = name ? index.skills.filter((skill) => skill.name === name) : index.skills;
 
         if (name && targets.length === 0) {
           throw new Error(`Skill not found: ${name}`);
@@ -45,7 +43,11 @@ export const registerUpdate = (program: Command): void => {
             throw new Error(`Skill ${skill.name} is missing a description after update.`);
           }
 
-          const metadata = buildMetadata(parsed, { type: "url", url: skill.source.url }, skill.name);
+          const metadata = buildMetadata(
+            parsed,
+            { type: "url", url: skill.source.url },
+            skill.name
+          );
           await writeSkillFiles(skill.name, markdown, metadata);
 
           const allowSystem = options.system || config.manageSystem;
@@ -63,7 +65,7 @@ export const registerUpdate = (program: Command): void => {
             source: { type: "url", url: skill.source.url },
             checksum: parsed.checksum,
             updatedAt: metadata.updatedAt,
-            lastSync: new Date().toISOString()
+            lastSync: new Date().toISOString(),
           });
           index.skills = nextIndex.skills;
           updated.push(skill.name);
@@ -79,8 +81,8 @@ export const registerUpdate = (program: Command): void => {
               name: name ?? null,
               system: Boolean(options.system),
               project: projectRoot,
-              updated
-            }
+              updated,
+            },
           });
           return;
         }

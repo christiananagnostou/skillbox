@@ -25,7 +25,7 @@ export const registerMeta = (program: Command): void => {
           ...metadata,
           categories: categories.length > 0 ? categories : undefined,
           tags: tags.length > 0 ? tags : undefined,
-          namespace
+          namespace,
         };
 
         await writeSkillMetadata(name, nextMetadata);
@@ -38,7 +38,7 @@ export const registerMeta = (program: Command): void => {
           updatedAt: metadata.updatedAt,
           categories: nextMetadata.categories,
           tags: nextMetadata.tags,
-          namespace: nextMetadata.namespace
+          namespace: nextMetadata.namespace,
         });
         await saveIndex(sortIndex(updated));
 
@@ -50,8 +50,8 @@ export const registerMeta = (program: Command): void => {
               name,
               categories: nextMetadata.categories ?? [],
               tags: nextMetadata.tags ?? [],
-              namespace: nextMetadata.namespace ?? null
-            }
+              namespace: nextMetadata.namespace ?? null,
+            },
           });
           return;
         }

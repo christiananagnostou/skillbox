@@ -1,6 +1,8 @@
 import type { IndexedSkill, SkillInstall } from "./types.js";
 
-const projectInstalls = (install: SkillInstall): install is SkillInstall & { projectRoot: string } => {
+const projectInstalls = (
+  install: SkillInstall
+): install is SkillInstall & { projectRoot: string } => {
   return install.scope === "project" && Boolean(install.projectRoot);
 };
 
