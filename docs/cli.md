@@ -158,6 +158,15 @@ Examples:
 - skillbox project sync /path/to/repo
 - skillbox project sync /path/to/repo --json
 
+### skillbox agent
+
+Print an agent-friendly usage snippet for AGENTS.md / CLAUDE.md.
+
+Examples:
+
+- skillbox agent
+- skillbox agent --json
+
 ## JSON Output Contract (Draft)
 
 All commands with --json return:

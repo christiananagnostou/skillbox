@@ -8,6 +8,7 @@ import { registerUpdate } from "./commands/update.js";
 import { registerImport } from "./commands/import.js";
 import { registerMeta } from "./commands/meta.js";
 import { registerProject } from "./commands/project.js";
+import { registerAgent } from "./commands/agent.js";
 
 const program = new Command();
 
@@ -24,5 +25,6 @@ registerUpdate(program);
 registerImport(program);
 registerMeta(program);
 registerProject(program);
+registerAgent(program);
 
 program.parse();
