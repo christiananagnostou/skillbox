@@ -47,12 +47,13 @@ Examples:
 
 - skillbox convert https://example.com/blog-post
 - skillbox convert https://example.com/blog-post --agent
+- skillbox convert https://example.com/blog-post --name research-skill --output ./drafts
 
 Behavior:
 
 - Fetches content.
-- If --agent is set, delegates conversion to the active agent.
-- Outputs SKILL.md draft and metadata for confirmation.
+- Writes a draft SKILL.md, skill.json, and source.txt into the output directory.
+- If --agent is set, the agent should refine the draft and SKILL.md using source.txt.
 
 ### skillbox list
 
