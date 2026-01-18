@@ -10,6 +10,7 @@ import { findProjectRoot } from "../lib/project-root.js";
 import type { AgentId } from "../lib/agents.js";
 import { loadProjects, findProject, saveProjects, upsertProject } from "../lib/projects.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
+import { loadConfig } from "../lib/config.js";
 
 export const registerAdd = (program: Command): void => {
   program
@@ -52,10 +53,13 @@ export const registerAdd = (program: Command): void => {
         });
 
         const projectRoot = await findProjectRoot(process.cwd());
-        const scope = options.global ? "user" : "project";
+        const config = await loadConfig();
+        const scope = options.global ? "user" : config.defaultScope ?? "project";
         const agentList: AgentId[] = options.agents
           ? options.agents.split(",").map((agent: string) => agent.trim() as AgentId).filter(Boolean)
-          : allAgents;
+          : config.defaultAgents.length > 0
+            ? config.defaultAgents.map((agent) => agent as AgentId)
+            : allAgents;
 
         const projects = await loadProjects();
         let projectEntry = findProject(projects, projectRoot);

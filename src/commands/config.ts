@@ -1,0 +1,66 @@
+import type { Command } from "commander";
+import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.js";
+import { loadConfig, saveConfig } from "../lib/config.js";
+
+const collect = (value: string, previous: string[] = []): string[] => {
+  return [...previous, value];
+};
+
+export const registerConfig = (program: Command): void => {
+  const config = program.command("config").description("View or edit skillbox config");
+
+  config
+    .command("get")
+    .option("--json", "JSON output")
+    .action(async (options) => {
+      try {
+        const current = await loadConfig();
+        if (isJsonEnabled(options)) {
+          printJson({ ok: true, command: "config get", data: current });
+          return;
+        }
+        printInfo(JSON.stringify(current, null, 2));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unexpected error";
+        if (isJsonEnabled(options)) {
+          printJson({ ok: false, command: "config get", error: { message } });
+          return;
+        }
+        printError(message);
+      }
+    });
+
+  config
+    .command("set")
+    .option("--default-agent <agent>", "Default agent", collect)
+    .option("--default-scope <scope>", "Default scope: project or user")
+    .option("--manage-system", "Enable system scope operations")
+    .option("--json", "JSON output")
+    .action(async (options) => {
+      try {
+        const current = await loadConfig();
+        const next = {
+          ...current,
+          defaultAgents: options.defaultAgent ?? current.defaultAgents,
+          defaultScope: options.defaultScope ?? current.defaultScope,
+          manageSystem: options.manageSystem ?? current.manageSystem
+        };
+
+        await saveConfig(next);
+
+        if (isJsonEnabled(options)) {
+          printJson({ ok: true, command: "config set", data: next });
+          return;
+        }
+
+        printInfo("Config updated.");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unexpected error";
+        if (isJsonEnabled(options)) {
+          printJson({ ok: false, command: "config set", error: { message } });
+          return;
+        }
+        printError(message);
+      }
+    });
+};

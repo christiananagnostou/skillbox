@@ -9,6 +9,16 @@ This document defines the CLI surface for Skillbox. Commands are designed to be 
 - --agents <list>: Comma-separated list of agents to target.
 - --system: Enable system-scope management (e.g., /etc/codex/skills).
 
+## Config
+
+Skillbox uses `~/.config/skillbox/config.json` to store defaults.
+
+Defaults:
+
+- defaultScope: project
+- defaultAgents: [] (all agents)
+- manageSystem: false
+
 ## Golden Workflow (Agent-Friendly)
 
 1. List skills
@@ -122,6 +132,25 @@ Examples:
 - skillbox meta set my-skill --category docs --category testing
 - skillbox meta set my-skill --tag internal --tag format
 - skillbox meta set my-skill --namespace team-ai
+
+### skillbox config get
+
+Show current config.
+
+Examples:
+
+- skillbox config get
+- skillbox config get --json
+
+### skillbox config set
+
+Set config defaults.
+
+Examples:
+
+- skillbox config set --default-scope user
+- skillbox config set --default-agent claude --default-agent cursor
+- skillbox config set --manage-system
 
 ### skillbox project add <path>
 

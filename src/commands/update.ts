@@ -6,6 +6,7 @@ import { parseSkillMarkdown, buildMetadata } from "../lib/skill-parser.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { copySkillToInstallPaths } from "../lib/sync.js";
 import path from "node:path";
+import { loadConfig } from "../lib/config.js";
 
 export const registerUpdate = (program: Command): void => {
   program
@@ -17,6 +18,7 @@ export const registerUpdate = (program: Command): void => {
     .action(async (name, options) => {
       try {
         const index = await loadIndex();
+        const config = await loadConfig();
         const targets = name
           ? index.skills.filter((skill) => skill.name === name)
           : index.skills;
@@ -45,8 +47,9 @@ export const registerUpdate = (program: Command): void => {
           const metadata = buildMetadata(parsed, { type: "url", url: skill.source.url }, skill.name);
           await writeSkillFiles(skill.name, markdown, metadata);
 
+          const allowSystem = options.system || config.manageSystem;
           const installPaths = (skill.installs ?? [])
-            .filter((install) => options.system || install.scope !== "system")
+            .filter((install) => allowSystem || install.scope !== "system")
             .filter((install) => !projectRoot || install.projectRoot === projectRoot)
             .map((install) => install.path);
 
