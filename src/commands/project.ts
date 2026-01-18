@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import path from "node:path";
 import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.js";
 import { loadProjects, saveProjects, upsertProject } from "../lib/projects.js";
+import { loadIndex } from "../lib/index.js";
 
 const collect = (value: string, previous: string[] = []): string[] => {
   return [...previous, value];
@@ -78,21 +79,47 @@ export const registerProject = (program: Command): void => {
     .command("list")
     .option("--json", "JSON output")
     .action(async (options) => {
-      const index = await loadProjects();
+      const projectsIndex = await loadProjects();
+      const skillIndex = await loadIndex();
+
+      const projectSkills = new Map<string, string[]>();
+      for (const skill of skillIndex.skills) {
+        for (const install of skill.installs ?? []) {
+          if (install.scope !== "project" || !install.projectRoot) {
+            continue;
+          }
+          const existing = projectSkills.get(install.projectRoot) ?? [];
+          if (!existing.includes(skill.name)) {
+            existing.push(skill.name);
+            projectSkills.set(install.projectRoot, existing);
+          }
+        }
+      }
+
+      const projects = projectsIndex.projects.map((project) => ({
+        ...project,
+        skills: projectSkills.get(project.root) ?? []
+      }));
+
       if (isJsonEnabled(options)) {
         printJson({
           ok: true,
           command: "project list",
           data: {
-            projects: index.projects
+            projects
           }
         });
         return;
       }
 
-      printInfo(`Projects: ${index.projects.length}`);
-      for (const entry of index.projects) {
-        printInfo(`- ${entry.root}`);
+      printInfo(`Projects: ${projects.length}`);
+      for (const entry of projects) {
+        const skills = entry.skills ?? [];
+        const label = skills.length > 0 ? ` (${skills.length} skills)` : "";
+        printInfo(`- ${entry.root}${label}`);
+        for (const skillName of skills) {
+          printInfo(`  - ${skillName}`);
+        }
       }
     });
 };
