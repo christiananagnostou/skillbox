@@ -32,7 +32,7 @@ export const registerStatus = (program: Command): void => {
             .map((install) => install.projectRoot as string);
 
           const allowSystem = config.manageSystem;
-          const isSystem = skill.source.type === "system";
+          const isSystem = (skill.installs ?? []).some((install) => install.scope === "system");
           if (isSystem && !allowSystem) {
             results.push({
               name: skill.name,
