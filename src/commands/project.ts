@@ -4,6 +4,7 @@ import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.j
 import { loadProjects, saveProjects, upsertProject } from "../lib/projects.js";
 import { loadIndex } from "../lib/index.js";
 import { copySkillToInstallPaths } from "../lib/sync.js";
+import { collectProjectSkills, getProjectInstallPaths, getProjectSkills } from "../lib/installs.js";
 
 const collect = (value: string, previous: string[] = []): string[] => {
   return [...previous, value];
@@ -80,9 +81,45 @@ export const registerProject = (program: Command): void => {
     .command("list")
     .option("--json", "JSON output")
     .action(async (options) => {
+      const projectsIndex = await loadProjects();
+      const skillIndex = await loadIndex();
+      const projectSkills = collectProjectSkills(skillIndex.skills);
+
+      const projects = projectsIndex.projects.map((project) => ({
+        ...project,
+        skills: projectSkills.get(project.root) ?? []
+      }));
+
+      if (isJsonEnabled(options)) {
+        printJson({
+          ok: true,
+          command: "project list",
+          data: {
+            projects
+          }
+        });
+        return;
+      }
+
+      printInfo(`Projects: ${projects.length}`);
+      for (const entry of projects) {
+        const skills = entry.skills ?? [];
+        const label = skills.length > 0 ? ` (${skills.length} skills)` : "";
+        printInfo(`- ${entry.root}${label}`);
+        for (const skillName of skills) {
+          printInfo(`  - ${skillName}`);
+        }
+      }
+    });
+
+  project
+    .command("inspect")
+    .argument("<path>", "Project path")
+    .option("--json", "JSON output")
+    .action(async (inputPath, options) => {
+      const projectsIndex = await loadProjects();
       const skillIndex = await loadIndex();
       const resolved = path.resolve(inputPath);
-
       const project = projectsIndex.projects.find((entry) => entry.root === resolved);
 
       if (!project) {
@@ -95,19 +132,11 @@ export const registerProject = (program: Command): void => {
         return;
       }
 
-      const skills = new Set<string>();
-      for (const skill of skillIndex.skills) {
-        for (const install of skill.installs ?? []) {
-          if (install.scope === "project" && install.projectRoot === resolved) {
-            skills.add(skill.name);
-          }
-        }
-      }
-
+      const skills = getProjectSkills(skillIndex.skills, resolved);
       const data = {
         root: project.root,
         agentPaths: project.agentPaths ?? {},
-        skills: Array.from(skills).sort()
+        skills
       };
 
       if (isJsonEnabled(options)) {
@@ -146,14 +175,9 @@ export const registerProject = (program: Command): void => {
     .action(async (inputPath, options) => {
       const skillIndex = await loadIndex();
       const resolved = path.resolve(inputPath);
+      const installPaths = getProjectInstallPaths(skillIndex.skills, resolved);
 
-      const skills = skillIndex.skills.filter((skill) =>
-        (skill.installs ?? []).some(
-          (install) => install.scope === "project" && install.projectRoot === resolved
-        )
-      );
-
-      if (skills.length === 0) {
+      if (installPaths.size === 0) {
         const message = `No skills recorded for project: ${resolved}`;
         if (isJsonEnabled(options)) {
           printJson({ ok: false, command: "project sync", error: { message } });
@@ -161,14 +185,6 @@ export const registerProject = (program: Command): void => {
         }
         printError(message);
         return;
-      }
-
-      const installPaths = new Map<string, string[]>();
-      for (const skill of skills) {
-        const paths = (skill.installs ?? [])
-          .filter((install) => install.scope === "project" && install.projectRoot === resolved)
-          .map((install) => install.path);
-        installPaths.set(skill.name, paths);
       }
 
       for (const [skillName, paths] of installPaths.entries()) {
