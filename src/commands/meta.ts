@@ -1,5 +1,7 @@
 import type { Command } from "commander";
-import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
+import { isJsonEnabled, printError, printInfo, printJson } from "../lib/output.js";
+import { readSkillMetadata, writeSkillMetadata } from "../lib/skill-store.js";
+import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 
 export const registerMeta = (program: Command): void => {
   const meta = program.command("meta").description("Manage skill metadata");
@@ -11,31 +13,56 @@ export const registerMeta = (program: Command): void => {
     .option("--tag <tag>", "Tag", collect)
     .option("--namespace <namespace>", "Namespace")
     .option("--json", "JSON output")
-    .action((name, options) => {
-      if (isJsonEnabled(options)) {
-        printJson({
-          ok: true,
-          command: "meta set",
-          data: {
-            name,
-            categories: options.category ?? [],
-            tags: options.tag ?? [],
-            namespace: options.namespace ?? null
-          }
-        });
-        return;
-      }
+    .action(async (name, options) => {
+      try {
+        const metadata = await readSkillMetadata(name);
+        const categories = options.category ?? metadata.categories ?? [];
+        const tags = options.tag ?? metadata.tags ?? [];
+        const namespace = options.namespace ?? metadata.namespace;
 
-      printInfo("Skillbox meta set is not implemented yet.");
-      printInfo(`Skill: ${name}`);
-      if (options.namespace) {
-        printInfo(`Namespace: ${options.namespace}`);
-      }
-      if (options.category) {
-        printInfo(`Categories: ${options.category.join(", ")}`);
-      }
-      if (options.tag) {
-        printInfo(`Tags: ${options.tag.join(", ")}`);
+        const nextMetadata = {
+          ...metadata,
+          categories: categories.length > 0 ? categories : undefined,
+          tags: tags.length > 0 ? tags : undefined,
+          namespace
+        };
+
+        await writeSkillMetadata(name, nextMetadata);
+
+        const index = await loadIndex();
+        const updated = upsertSkill(index, {
+          name,
+          source: metadata.source,
+          checksum: metadata.checksum,
+          updatedAt: metadata.updatedAt,
+          categories: nextMetadata.categories,
+          tags: nextMetadata.tags,
+          namespace: nextMetadata.namespace
+        });
+        await saveIndex(sortIndex(updated));
+
+        if (isJsonEnabled(options)) {
+          printJson({
+            ok: true,
+            command: "meta set",
+            data: {
+              name,
+              categories: nextMetadata.categories ?? [],
+              tags: nextMetadata.tags ?? [],
+              namespace: nextMetadata.namespace ?? null
+            }
+          });
+          return;
+        }
+
+        printInfo(`Updated metadata for ${name}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unexpected error";
+        if (isJsonEnabled(options)) {
+          printJson({ ok: false, command: "meta set", error: { message } });
+          return;
+        }
+        printError(message);
       }
     });
 };

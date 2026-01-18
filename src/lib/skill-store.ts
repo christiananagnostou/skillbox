@@ -23,6 +23,17 @@ export const writeSkillFiles = async (
   await fs.writeFile(path.join(targetDir, "skill.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
 };
 
+export const readSkillMetadata = async (name: string): Promise<SkillMetadata> => {
+  const targetDir = skillDir(name);
+  const content = await fs.readFile(path.join(targetDir, "skill.json"), "utf8");
+  return JSON.parse(content) as SkillMetadata;
+};
+
+export const writeSkillMetadata = async (name: string, metadata: SkillMetadata): Promise<void> => {
+  const targetDir = skillDir(name);
+  await fs.writeFile(path.join(targetDir, "skill.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+};
+
 export const hashContent = (content: string): string => {
   return crypto.createHash("sha256").update(content).digest("hex");
 };
