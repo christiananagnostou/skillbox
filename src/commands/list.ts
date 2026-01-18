@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { loadIndex } from "../lib/index.js";
+import { groupNamesByKey } from "../lib/grouping.js";
 
 export const registerList = (program: Command): void => {
   program
@@ -85,51 +86,34 @@ export const registerList = (program: Command): void => {
 };
 
 const groupByProject = (skills: Array<{ name: string; installs?: Array<{ projectRoot?: string; scope: string }> }>) => {
-  const map = new Map<string, string[]>();
-  for (const skill of skills) {
-    for (const install of skill.installs ?? []) {
-      if (install.scope !== "project" || !install.projectRoot) {
-        continue;
-      }
-      const existing = map.get(install.projectRoot) ?? [];
-      if (!existing.includes(skill.name)) {
-        existing.push(skill.name);
-        map.set(install.projectRoot, existing);
-      }
-    }
-  }
-  return Array.from(map.entries())
-    .map(([root, skillNames]) => ({ root, skills: skillNames.sort() }))
-    .sort((a, b) => a.root.localeCompare(b.root));
+  const grouped = groupNamesByKey(
+    skills,
+    (skill) => skill.name,
+    (skill) =>
+      (skill.installs ?? [])
+        .filter((install) => install.scope === "project" && install.projectRoot)
+        .map((install) => install.projectRoot as string)
+  );
+  return grouped.map((group) => ({ root: group.key, skills: group.skills }));
 };
 
 const groupBySource = (skills: Array<{ name: string; source: { type: string } }>) => {
-  const map = new Map<string, string[]>();
-  for (const skill of skills) {
-    const source = skill.source.type;
-    const existing = map.get(source) ?? [];
-    if (!existing.includes(skill.name)) {
-      existing.push(skill.name);
-      map.set(source, existing);
-    }
-  }
-  return Array.from(map.entries())
-    .map(([source, skillNames]) => ({ source, skills: skillNames.sort() }))
-    .sort((a, b) => a.source.localeCompare(b.source));
+  const grouped = groupNamesByKey(
+    skills,
+    (skill) => skill.name,
+    (skill) => [skill.source.type]
+  );
+  return grouped.map((group) => ({ source: group.key, skills: group.skills }));
 };
 
 const groupByNamespace = (skills: Array<{ name: string; namespace?: string }>) => {
-  const map = new Map<string, string[]>();
-  for (const skill of skills) {
-    const namespace = skill.namespace ?? "(none)";
-    const existing = map.get(namespace) ?? [];
-    if (!existing.includes(skill.name)) {
-      existing.push(skill.name);
-      map.set(namespace, existing);
-    }
-  }
-  return Array.from(map.entries())
-    .map(([namespace, skillNames]) => ({ namespace, skills: skillNames.sort() }))
+  const grouped = groupNamesByKey(
+    skills,
+    (skill) => skill.name,
+    (skill) => [skill.namespace ?? "(none)"]
+  );
+  return grouped
+    .map((group) => ({ namespace: group.key, skills: group.skills }))
     .sort((a, b) => {
       if (a.namespace === "(none)") {
         return 1;
@@ -142,19 +126,13 @@ const groupByNamespace = (skills: Array<{ name: string; namespace?: string }>) =
 };
 
 const groupByCategory = (skills: Array<{ name: string; categories?: string[] }>) => {
-  const map = new Map<string, string[]>();
-  for (const skill of skills) {
-    const categories = skill.categories ?? ["(uncategorized)"];
-    for (const category of categories) {
-      const existing = map.get(category) ?? [];
-      if (!existing.includes(skill.name)) {
-        existing.push(skill.name);
-        map.set(category, existing);
-      }
-    }
-  }
-  return Array.from(map.entries())
-    .map(([category, skillNames]) => ({ category, skills: skillNames.sort() }))
+  const grouped = groupNamesByKey(
+    skills,
+    (skill) => skill.name,
+    (skill) => skill.categories ?? ["(uncategorized)"]
+  );
+  return grouped
+    .map((group) => ({ category: group.key, skills: group.skills }))
     .sort((a, b) => {
       if (a.category === "(uncategorized)") {
         return 1;

@@ -4,6 +4,7 @@ import { loadIndex, saveIndex } from "../lib/index.js";
 import { fetchText } from "../lib/fetcher.js";
 import { hashContent } from "../lib/skill-store.js";
 import { loadConfig } from "../lib/config.js";
+import { groupStatusByKey } from "../lib/grouping.js";
 
 export const registerStatus = (program: Command): void => {
   program
@@ -155,31 +156,21 @@ export const registerStatus = (program: Command): void => {
 };
 
 const groupByProject = (results: Array<{ name: string; outdated: boolean; projects: string[] }>) => {
-  const map = new Map<string, { root: string; outdated: string[]; upToDate: string[] }>();
-  for (const result of results) {
-    for (const project of result.projects) {
-      const entry = map.get(project) ?? { root: project, outdated: [], upToDate: [] };
-      if (result.outdated) {
-        entry.outdated.push(result.name);
-      } else {
-        entry.upToDate.push(result.name);
-      }
-      map.set(project, entry);
-    }
-  }
-  return Array.from(map.values()).sort((a, b) => a.root.localeCompare(b.root));
+  const grouped = groupStatusByKey(
+    results,
+    (result) => result.name,
+    (result) => result.outdated,
+    (result) => result.projects
+  );
+  return grouped.map((group) => ({ root: group.key, outdated: group.outdated, upToDate: group.upToDate }));
 };
 
 const groupBySource = (results: Array<{ name: string; outdated: boolean; source: string }>) => {
-  const map = new Map<string, { source: string; outdated: string[]; upToDate: string[] }>();
-  for (const result of results) {
-    const entry = map.get(result.source) ?? { source: result.source, outdated: [], upToDate: [] };
-    if (result.outdated) {
-      entry.outdated.push(result.name);
-    } else {
-      entry.upToDate.push(result.name);
-    }
-    map.set(result.source, entry);
-  }
-  return Array.from(map.values()).sort((a, b) => a.source.localeCompare(b.source));
+  const grouped = groupStatusByKey(
+    results,
+    (result) => result.name,
+    (result) => result.outdated,
+    (result) => [result.source]
+  );
+  return grouped.map((group) => ({ source: group.key, outdated: group.outdated, upToDate: group.upToDate }));
 };
