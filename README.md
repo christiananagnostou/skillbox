@@ -1,6 +1,9 @@
 # skillbox
 
-Local-first, agent-agnostic skills manager. Track, update, and sync skills across popular AI coding agents with one CLI.
+> Local-first, agent-agnostic skills manager. Track, update, and sync skills across popular AI coding agents with one CLI.
+
+[![CI](https://github.com/christiananagnostou/skillbox/actions/workflows/ci.yml/badge.svg)](https://github.com/christiananagnostou/skillbox/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/skillbox.svg)](https://www.npmjs.com/package/skillbox)
 
 ## Installation
 
@@ -9,8 +12,6 @@ Local-first, agent-agnostic skills manager. Track, update, and sync skills acros
 ```bash
 npm install -g skillbox
 ```
-
-TODO: Publish initial npm release
 
 ### From Source
 
@@ -22,15 +23,6 @@ npm run build
 npm link --global
 ```
 
-### Homebrew
-
-```bash
-brew tap christiananagnostou/skillbox
-brew install skillbox
-```
-
-TODO: Homebrew formula publishing
-
 ## CI
 
 ```bash
@@ -39,7 +31,6 @@ npm run format:check
 npm run build
 ```
 
-TODO: Publish GitHub Actions badge
 
 ## Quick Start
 
