@@ -130,7 +130,15 @@ const groupByNamespace = (skills: Array<{ name: string; namespace?: string }>) =
   }
   return Array.from(map.entries())
     .map(([namespace, skillNames]) => ({ namespace, skills: skillNames.sort() }))
-    .sort((a, b) => a.namespace.localeCompare(b.namespace));
+    .sort((a, b) => {
+      if (a.namespace === "(none)") {
+        return 1;
+      }
+      if (b.namespace === "(none)") {
+        return -1;
+      }
+      return a.namespace.localeCompare(b.namespace);
+    });
 };
 
 const groupByCategory = (skills: Array<{ name: string; categories?: string[] }>) => {
@@ -147,5 +155,13 @@ const groupByCategory = (skills: Array<{ name: string; categories?: string[] }>)
   }
   return Array.from(map.entries())
     .map(([category, skillNames]) => ({ category, skills: skillNames.sort() }))
-    .sort((a, b) => a.category.localeCompare(b.category));
+    .sort((a, b) => {
+      if (a.category === "(uncategorized)") {
+        return 1;
+      }
+      if (b.category === "(uncategorized)") {
+        return -1;
+      }
+      return a.category.localeCompare(b.category);
+    });
 };

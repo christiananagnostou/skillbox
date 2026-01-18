@@ -57,7 +57,7 @@ Behavior:
 
 ### skillbox list
 
-List all known skills across user + project scopes.
+List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects.
 
 Examples:
 
@@ -71,7 +71,7 @@ Examples:
 
 ### skillbox status
 
-Check for outdated skills by comparing local checksums to remote sources.
+Check for outdated skills by comparing local checksums to remote sources. Use --group to view by project or source.
 
 Examples:
 

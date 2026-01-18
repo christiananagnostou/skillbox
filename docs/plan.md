@@ -121,7 +121,7 @@ Skillbox tracks projects separately at:
 Each project entry includes:
 
 - project root path
-- agent-specific project skill paths
+- agent-specific project skill paths (overrides)
 - skills installed in that project
 - link-to-global setting (optional)
 
@@ -143,14 +143,17 @@ Status always checks the network (no cache by default). A cache may be added lat
 Core commands:
 
 - skillbox add <url> [--name <name>] [--global] [--agents ...]
-- skillbox convert <url> [--agent]
+- skillbox convert <url> [--name <name>] [--output <dir>] [--agent]
 - skillbox list [--group=category|namespace|source|project] [--json]
-- skillbox status [--json]
-- skillbox update [name] [--system]
+- skillbox status [--group=project|source] [--json]
+- skillbox update [name] [--system] [--project <path>]
 - skillbox import <path>
 - skillbox meta set <name> --category foo --tag bar --namespace baz
-- skillbox project add <path>
+- skillbox project add <path> [--agent-path agent=path]
 - skillbox project list
+- skillbox project inspect <path>
+- skillbox project sync <path>
+- skillbox agent
 
 ## Agent-Friendly UX
 
@@ -180,5 +183,7 @@ See docs/distribution.md for details.
 5. Add metadata editing
 6. Add project registry and per-project config
 7. Add JSON output for all commands
+8. Add project sync and inspect commands
+9. Add agent-friendly help output
 
 This plan is the source of truth for v1 behavior.
