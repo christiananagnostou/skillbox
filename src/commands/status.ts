@@ -7,7 +7,7 @@ import { hashContent } from "../lib/skill-store.js";
 export const registerStatus = (program: Command): void => {
   program
     .command("status")
-    .option("--group <group>", "Group by project")
+    .option("--group <group>", "Group by project or source")
     .option("--json", "JSON output")
     .action(async (options) => {
       try {
@@ -56,7 +56,8 @@ export const registerStatus = (program: Command): void => {
 
         const outdated = results.filter((entry) => entry.outdated).map((entry) => entry.name);
         const upToDate = results.filter((entry) => !entry.outdated).map((entry) => entry.name);
-        const grouped = groupByProject(results);
+        const groupedProjects = groupByProject(results);
+        const groupedSources = groupBySource(results);
 
         if (isJsonEnabled(options)) {
           printJson({
@@ -67,15 +68,16 @@ export const registerStatus = (program: Command): void => {
               outdated,
               upToDate,
               results,
-              projects: options.group === "project" ? grouped : undefined
+              projects: options.group === "project" ? groupedProjects : undefined,
+              sources: options.group === "source" ? groupedSources : undefined
             }
           });
           return;
         }
 
         if (options.group === "project") {
-          printInfo(`Projects: ${grouped.length}`);
-          for (const project of grouped) {
+          printInfo(`Projects: ${groupedProjects.length}`);
+          for (const project of groupedProjects) {
             printInfo(`- ${project.root}`);
             if (project.outdated.length > 0) {
               printInfo("  Outdated:");
@@ -86,6 +88,26 @@ export const registerStatus = (program: Command): void => {
             if (project.upToDate.length > 0) {
               printInfo("  Up to date:");
               for (const name of project.upToDate) {
+                printInfo(`    - ${name}`);
+              }
+            }
+          }
+          return;
+        }
+
+        if (options.group === "source") {
+          printInfo(`Sources: ${groupedSources.length}`);
+          for (const source of groupedSources) {
+            printInfo(`- ${source.source}`);
+            if (source.outdated.length > 0) {
+              printInfo("  Outdated:");
+              for (const name of source.outdated) {
+                printInfo(`    - ${name}`);
+              }
+            }
+            if (source.upToDate.length > 0) {
+              printInfo("  Up to date:");
+              for (const name of source.upToDate) {
                 printInfo(`    - ${name}`);
               }
             }
@@ -123,4 +145,18 @@ const groupByProject = (results: Array<{ name: string; outdated: boolean; projec
     }
   }
   return Array.from(map.values()).sort((a, b) => a.root.localeCompare(b.root));
+};
+
+const groupBySource = (results: Array<{ name: string; outdated: boolean; source: string }>) => {
+  const map = new Map<string, { source: string; outdated: string[]; upToDate: string[] }>();
+  for (const result of results) {
+    const entry = map.get(result.source) ?? { source: result.source, outdated: [], upToDate: [] };
+    if (result.outdated) {
+      entry.outdated.push(result.name);
+    } else {
+      entry.upToDate.push(result.name);
+    }
+    map.set(result.source, entry);
+  }
+  return Array.from(map.values()).sort((a, b) => a.source.localeCompare(b.source));
 };

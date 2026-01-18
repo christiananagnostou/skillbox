@@ -65,6 +65,7 @@ Examples:
 - skillbox list --group=namespace
 - skillbox list --group=source
 - skillbox list --group=project
+- skillbox list --group=category
 - skillbox list --json
 
 ### skillbox status
@@ -76,6 +77,7 @@ Examples:
 - skillbox status
 - skillbox status --json
 - skillbox status --group=project
+- skillbox status --group=source
 
 Output includes:
 
