@@ -129,6 +129,7 @@ Agent paths (default):
 - Amp: `.agents/skills/`, `~/.config/agents/skills/` (Claude-compatible `.claude/skills/` also supported)
 - Antigravity: `.agent/skills/`, `~/.gemini/antigravity/skills/`
 
+Note: only Codex defines a system scope path.
 
 ## Usage with AI Agents
 

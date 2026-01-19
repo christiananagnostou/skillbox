@@ -81,6 +81,7 @@ User scope:
 
 ## Notes
 
+- Only Codex defines a system scope path (`/etc/codex/skills`).
 - All agents expect a folder per skill containing SKILL.md.
 - Skillbox uses a canonical store and copies into these locations.
 - Skillbox supports per-project overrides for agent path mappings.
