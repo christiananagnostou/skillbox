@@ -115,14 +115,17 @@ Behavior:
 - Updates canonical store first, then overwrites agent copies.
 - Skips system scope unless --system is passed.
 
-### skillbox import <path>
+### skillbox import [path]
 
-Import an existing skill directory into Skillbox index.
+Import an existing skill directory into Skillbox index, or bulk import global skills.
 
 Examples:
 
 - skillbox import .claude/skills/my-skill
 - skillbox import /path/to/skill
+- skillbox import --global
+- skillbox import --system
+- skillbox import --global --system
 
 ### skillbox meta set <name>
 

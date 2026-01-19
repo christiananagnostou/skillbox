@@ -147,7 +147,7 @@ Core commands:
 - skillbox list [--group=category|namespace|source|project] [--project-only] [--json]
 - skillbox status [--group=project|source] [--json]
 - skillbox update [name] [--system] [--project <path>]
-- skillbox import <path>
+- skillbox import [path] [--global] [--system]
 - skillbox meta set <name> --category foo --tag bar --namespace baz
 - skillbox project add <path> [--agent-path agent=path]
 - skillbox project list
