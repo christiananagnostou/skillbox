@@ -17,9 +17,9 @@ npm install -g skillbox
 
 ## Quick Start
 
-On first run, Skillbox will detect installed agents and ask for confirmation. If detection succeeds, enter accepts the detected list; if nothing is found, enter defaults to all agents.
+Skillbox will detect installed agents on your machine. If detection succeeds, `enter` accepts the detected list; if nothing is found, `enter` defaults to all agents or you can type a comma-separated list.
 
-Tip: run `skillbox list` right after install to see existing skills and complete onboarding.
+Tip: run `skillbox list` right after install to see existing skills.
 
 ```bash
 skillbox add https://example.com/skills/linting/SKILL.md
