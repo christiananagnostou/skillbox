@@ -125,7 +125,6 @@ Agent paths (default):
 - Amp: `.agents/skills/`, `~/.config/agents/skills/` (Claude-compatible `.claude/skills/` also supported)
 - Antigravity: `.agent/skills/`, `~/.gemini/antigravity/skills/`
 
-TODO: Validate agent path list against upstream docs before release
 
 ## Usage with AI Agents
 
@@ -152,10 +151,6 @@ Core workflow:
 2. `skillbox status --json`
 3. `skillbox update <name> --json`
 ```
-
-### Claude Code Skill
-
-TODO: Provide a Skillbox skill for Claude Code (SKILL.md)
 
 ## License
 
