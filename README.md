@@ -73,7 +73,11 @@ skillbox config set --default-agent claude --default-agent cursor
 skillbox config set --manage-system
 ```
 
-TODO: Config option reference (defaults, values, validation)
+Config defaults live in `~/.config/skillbox/config.json`:
+
+- `defaultScope`: `project` (default) or `user`
+- `defaultAgents`: empty array means all agents
+- `manageSystem`: `false` by default
 
 ## Agent Mode
 
