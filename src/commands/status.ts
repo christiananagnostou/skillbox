@@ -27,9 +27,13 @@ export const registerStatus = (program: Command): void => {
         }>;
 
         for (const skill of index.skills) {
-          const projects = (skill.installs ?? [])
-            .filter((install) => install.scope === "project" && install.projectRoot)
-            .map((install) => install.projectRoot as string);
+          const projects = Array.from(
+            new Set(
+              (skill.installs ?? [])
+                .filter((install) => install.scope === "project" && install.projectRoot)
+                .map((install) => install.projectRoot as string)
+            )
+          );
 
           const allowSystem = config.manageSystem;
           const isSystem = (skill.installs ?? []).some((install) => install.scope === "system");

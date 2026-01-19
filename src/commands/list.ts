@@ -2,15 +2,18 @@ import type { Command } from "commander";
 import { isJsonEnabled, printInfo, printJson, printGroupList } from "../lib/output.js";
 import { loadIndex } from "../lib/index.js";
 import { groupNamesByKey } from "../lib/grouping.js";
+import { discoverGlobalSkills } from "../lib/global-skills.js";
 
 export const registerList = (program: Command): void => {
   program
     .command("list")
     .option("--group <group>", "Group by category, namespace, source, project")
+    .option("--project-only", "Only show project-indexed skills")
     .option("--json", "JSON output")
     .action(async (options) => {
       const index = await loadIndex();
-      const skills = index.skills;
+      const globalSkills = options.projectOnly ? [] : await listGlobalSkills(index.skills);
+      const skills = [...index.skills, ...globalSkills];
       const groupedProjects = groupByProject(skills);
       const groupedSources = groupBySource(skills);
       const groupedNamespaces = groupByNamespace(skills);
@@ -88,6 +91,33 @@ const groupByProject = (
         .map((install) => install.projectRoot as string)
   );
   return grouped.map((group) => ({ root: group.key, skills: group.skills }));
+};
+
+const listGlobalSkills = async (
+  existing: Array<{ name: string }>
+): Promise<
+  Array<{
+    name: string;
+    source: { type: "local" };
+    installs: Array<{ scope: "user" | "system"; agent: string; path: string }>;
+    namespace?: string;
+    categories?: string[];
+    tags?: string[];
+  }>
+> => {
+  const projectRoot = process.cwd();
+  const seen = new Set(existing.map((skill) => skill.name));
+  const discovered = await discoverGlobalSkills(projectRoot);
+  return discovered
+    .filter((skill) => !seen.has(skill.name))
+    .map((skill) => ({
+      name: skill.name,
+      source: { type: "local" },
+      installs: skill.installs,
+      namespace: undefined,
+      categories: undefined,
+      tags: undefined,
+    }));
 };
 
 const groupBySource = (skills: Array<{ name: string; source: { type: string } }>) => {

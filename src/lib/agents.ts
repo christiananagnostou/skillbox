@@ -50,6 +50,16 @@ export const agentPaths = (projectRoot: string): Record<AgentId, AgentPathMap> =
 
 export const allAgents: AgentId[] = ["opencode", "claude", "cursor", "codex", "amp", "antigravity"];
 
+export const getUserAgentPaths = (projectRoot: string): string[] => {
+  const paths = agentPaths(projectRoot);
+  return Object.values(paths).flatMap((entry) => entry.user);
+};
+
+export const getSystemAgentPaths = (projectRoot: string): string[] => {
+  const paths = agentPaths(projectRoot);
+  return Object.values(paths).flatMap((entry) => entry.system ?? []);
+};
+
 const agentSet = new Set(allAgents);
 
 export const isAgentId = (value: string): value is AgentId => {

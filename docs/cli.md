@@ -67,7 +67,7 @@ Behavior:
 
 ### skillbox list
 
-List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects.
+List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects. Use --project-only to skip user/system discovery.
 
 Examples:
 
@@ -78,6 +78,7 @@ Examples:
 - skillbox list --group=project
 - skillbox list --group=category
 - skillbox list --json
+- skillbox list --project-only --json
 
 ### skillbox status
 
@@ -114,14 +115,17 @@ Behavior:
 - Updates canonical store first, then overwrites agent copies.
 - Skips system scope unless --system is passed.
 
-### skillbox import <path>
+### skillbox import [path]
 
-Import an existing skill directory into Skillbox index.
+Import an existing skill directory into Skillbox index, or bulk import global skills.
 
 Examples:
 
 - skillbox import .claude/skills/my-skill
 - skillbox import /path/to/skill
+- skillbox import --global
+- skillbox import --system
+- skillbox import --global --system
 
 ### skillbox meta set <name>
 
