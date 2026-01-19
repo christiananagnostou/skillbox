@@ -33,7 +33,7 @@ npm run build
 
 ## Quick Start
 
-On first run, Skillbox will detect installed agents and ask for confirmation. It will default to all agents if you skip the prompt.
+On first run, Skillbox will detect installed agents and ask for confirmation. If detection succeeds, enter accepts the detected list; if nothing is found, enter defaults to all agents.
 
 ```bash
 skillbox add https://example.com/skills/linting/SKILL.md
