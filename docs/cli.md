@@ -67,7 +67,7 @@ Behavior:
 
 ### skillbox list
 
-List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects.
+List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects. Use --global to discover skills already installed in agent user/system folders.
 
 Examples:
 
@@ -78,6 +78,7 @@ Examples:
 - skillbox list --group=project
 - skillbox list --group=category
 - skillbox list --json
+- skillbox list --global --json
 
 ### skillbox status
 
