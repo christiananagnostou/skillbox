@@ -73,7 +73,11 @@ skillbox config set --default-agent claude --default-agent cursor
 skillbox config set --manage-system
 ```
 
-TODO: Config option reference (defaults, values, validation)
+Config defaults live in `~/.config/skillbox/config.json`:
+
+- `defaultScope`: `project` (default) or `user`
+- `defaultAgents`: empty array means all agents
+- `manageSystem`: `false` by default
 
 ## Agent Mode
 
@@ -125,7 +129,7 @@ Agent paths (default):
 - Amp: `.agents/skills/`, `~/.config/agents/skills/` (Claude-compatible `.claude/skills/` also supported)
 - Antigravity: `.agent/skills/`, `~/.gemini/antigravity/skills/`
 
-TODO: Validate agent path list against upstream docs before release
+Note: only Codex defines a system scope path.
 
 ## Usage with AI Agents
 
@@ -152,10 +156,6 @@ Core workflow:
 2. `skillbox status --json`
 3. `skillbox update <name> --json`
 ```
-
-### Claude Code Skill
-
-TODO: Provide a Skillbox skill for Claude Code (SKILL.md)
 
 ## License
 
