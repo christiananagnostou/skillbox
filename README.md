@@ -33,6 +33,8 @@ npm run build
 
 ## Quick Start
 
+On first run, Skillbox will ask which agents you use. It will default to all agents if you skip the prompt.
+
 ```bash
 skillbox add https://example.com/skills/linting/SKILL.md
 skillbox list
@@ -70,6 +72,7 @@ skillbox project sync <path>
 skillbox config get
 skillbox config set --default-scope user
 skillbox config set --default-agent claude --default-agent cursor
+skillbox config set --add-agent codex
 skillbox config set --manage-system
 ```
 

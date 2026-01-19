@@ -19,6 +19,10 @@ Defaults:
 - defaultAgents: [] (all agents)
 - manageSystem: false
 
+## Onboarding
+
+On first run, Skillbox prompts for your preferred agents and stores them in config. Run `skillbox config set --add-agent <agent>` to add more later.
+
 ## Golden Workflow (Agent-Friendly)
 
 1. List skills
@@ -154,6 +158,7 @@ Examples:
 
 - skillbox config set --default-scope user
 - skillbox config set --default-agent claude --default-agent cursor
+- skillbox config set --add-agent codex
 - skillbox config set --manage-system
 
 ### skillbox project add <path>
