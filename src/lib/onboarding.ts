@@ -24,7 +24,11 @@ const promptAgents = async (): Promise<string[]> => {
     .filter((agent) => agent.length > 0)
     .filter(isAgentId);
 
-  return selected.length > 0 ? selected : allAgents;
+  if (selected.length > 0) {
+    return selected;
+  }
+
+  return detected.length > 0 ? detected : allAgents;
 };
 
 export const runOnboarding = async (): Promise<void> => {
