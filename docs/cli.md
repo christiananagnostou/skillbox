@@ -21,7 +21,7 @@ Defaults:
 
 ## Onboarding
 
-On first run, Skillbox prompts for your preferred agents and stores them in config. Run `skillbox config set --add-agent <agent>` to add more later.
+On first run, Skillbox detects installed agents and prompts for confirmation. Run `skillbox config set --add-agent <agent>` to add more later.
 
 ## Golden Workflow (Agent-Friendly)
 
