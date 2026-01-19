@@ -100,6 +100,9 @@ const listGlobalSkills = async (
     name: string;
     source: { type: "local" };
     installs: Array<{ scope: "user" | "system"; agent: string; path: string }>;
+    namespace?: string;
+    categories?: string[];
+    tags?: string[];
   }>
 > => {
   const projectRoot = process.cwd();
@@ -111,6 +114,9 @@ const listGlobalSkills = async (
       name: skill.name,
       source: { type: "local" },
       installs: skill.installs,
+      namespace: undefined,
+      categories: undefined,
+      tags: undefined,
     }));
 };
 
