@@ -99,12 +99,12 @@ const importGlobalSkills = async (options: {
   const index = await loadIndex();
   const seen = new Set(index.skills.map((skill) => skill.name));
 
-  const imported: string[] = [];
-  const skipped: string[] = [];
+  const imported = new Set<string>();
+  const skipped = new Set<string>();
 
   for (const skill of discovered) {
     if (seen.has(skill.name)) {
-      skipped.push(skill.name);
+      skipped.add(skill.name);
       continue;
     }
 
@@ -113,7 +113,7 @@ const importGlobalSkills = async (options: {
     const metadata = buildMetadata(parsed, { type: "local" });
 
     if (!parsed.description) {
-      skipped.push(skill.name);
+      skipped.add(skill.name);
       continue;
     }
 
@@ -134,13 +134,13 @@ const importGlobalSkills = async (options: {
       ],
     });
     index.skills = next.skills;
-    imported.push(metadata.name);
+    imported.add(metadata.name);
   }
 
   await saveIndex(sortIndex(index));
 
   return {
-    imported: imported.sort(),
-    skipped: skipped.sort(),
+    imported: Array.from(imported).sort(),
+    skipped: Array.from(skipped).sort(),
   };
 };
