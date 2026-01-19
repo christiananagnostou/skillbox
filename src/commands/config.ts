@@ -29,6 +29,7 @@ export const registerConfig = (program: Command): void => {
   config
     .command("set")
     .option("--default-agent <agent>", "Default agent", collect)
+    .option("--add-agent <agent>", "Add to default agents", collect)
     .option("--default-scope <scope>", "Default scope: project or user")
     .option("--manage-system", "Enable system scope operations")
     .option("--json", "JSON output")
@@ -39,9 +40,15 @@ export const registerConfig = (program: Command): void => {
         if (nextScope !== "project" && nextScope !== "user") {
           throw new Error("defaultScope must be 'project' or 'user'.");
         }
+        const addedAgents = options.addAgent ?? [];
+        const nextAgents = options.defaultAgent ?? current.defaultAgents;
+        const mergedAgents = Array.from(
+          new Set([...(nextAgents ?? []), ...addedAgents].filter((agent) => agent.length > 0))
+        );
+
         const next = {
           ...current,
-          defaultAgents: options.defaultAgent ?? current.defaultAgents,
+          defaultAgents: mergedAgents,
           defaultScope: nextScope,
           manageSystem: options.manageSystem ?? current.manageSystem,
         };

@@ -26,4 +26,10 @@ registerProject(program);
 registerAgent(program);
 registerConfig(program);
 
-program.parse();
+const run = async () => {
+  const { runOnboarding } = await import("./lib/onboarding.js");
+  await runOnboarding();
+  program.parse();
+};
+
+void run();

@@ -13,25 +13,13 @@
 npm install -g skillbox
 ```
 
-### From Source
 
-```bash
-git clone https://github.com/christiananagnostou/skillbox
-cd skillbox
-npm install
-npm run build
-npm link --global
-```
-
-## CI
-
-```bash
-npm run lint:ci
-npm run format:check
-npm run build
-```
 
 ## Quick Start
+
+Skillbox will detect installed agents on your machine. If detection succeeds, `enter` accepts the detected list; if nothing is found, `enter` defaults to all agents or you can type a comma-separated list.
+
+Tip: run `skillbox list` right after install to see existing skills.
 
 ```bash
 skillbox add https://example.com/skills/linting/SKILL.md
@@ -70,6 +58,7 @@ skillbox project sync <path>
 skillbox config get
 skillbox config set --default-scope user
 skillbox config set --default-agent claude --default-agent cursor
+skillbox config set --add-agent codex
 skillbox config set --manage-system
 ```
 
@@ -155,6 +144,16 @@ Core workflow:
 1. `skillbox list --json`
 2. `skillbox status --json`
 3. `skillbox update <name> --json`
+```
+
+## Development
+
+```bash
+git clone https://github.com/christiananagnostou/skillbox
+cd skillbox
+npm install
+npm run build
+npm link --global
 ```
 
 ## License
