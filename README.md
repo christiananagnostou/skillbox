@@ -15,9 +15,9 @@ npm install -g skillbox
 
 ## Quick Start
 
-Skillbox will detect installed agents on your machine. If detection succeeds, `enter` accepts the detected list; if nothing is found, `enter` defaults to all agents or you can type a comma-separated list. Repo installs can source multiple skills from GitHub and track their repo origin for updates.
+Skillbox will detect installed agents on your machine. Repo and URL installs can track their origin so your skills always stay up to date.
 
-Tip: run `skillbox list` right after install to see existing skills.
+> Tip: run `skillbox list` right after install to see existing skills.
 
 Skillbox links agent folders to the canonical store using symlinks on macOS/Linux and file copies on Windows.
 
@@ -29,112 +29,8 @@ skillbox add owner/repo --list
 # install single repo skill
 skillbox add owner/repo --skill linting
 # install all repo skills
-skillbox add owner/repo --yes
-# list installed skills
-skillbox list
-# check for updates
-skillbox status
-# update one skill
-skillbox update linting
-```
+skillbox add owner/repo
 
-## Commands
-
-### Core Commands
-
-```bash
-# add skill from URL
-skillbox add <url> [--name <name>] [--global] [--agents ...]
-# add skill(s) from repo
-skillbox add <repo> [--list] [--skill <name>] [--yes] [--global] [--agents ...]
-# convert content to skill
-skillbox convert <url> [--name <name>] [--output <dir>] [--agent]
-# list skills
-skillbox list [--group=category|namespace|source|project] [--json]
-# check for updates
-skillbox status [--group=project|source] [--json]
-# update skills
-skillbox update [name] [--project <path>]
-# remove skills
-skillbox remove <name> [--project <path>]
-# import existing skills
-skillbox import <path>
-# update metadata
-skillbox meta set <name> --category foo --tag bar --namespace baz
-# open agent REPL
-skillbox agent
-```
-
-### Project Commands
-
-```bash
-# register project
-skillbox project add <path> [--agent-path agent=path]
-# list projects
-skillbox project list
-# show project details
-skillbox project inspect <path>
-# resync project skills
-skillbox project sync <path>
-```
-
-### Config
-
-```bash
-# show config
-skillbox config get
-# set default scope
-skillbox config set --default-scope user
-# replace default agents
-skillbox config set --default-agent claude --default-agent cursor
-# add default agent
-skillbox config set --add-agent codex
-# use symlink installs
-skillbox config set --install-mode symlink
-# use file copies
-skillbox config set --install-mode copy
-```
-
-Config defaults live in `~/.config/skillbox/config.json`:
-
-- `defaultScope`: `project` (default) or `user`
-- `defaultAgents`: empty array means all agents
-- `installMode`: `symlink` (macOS/Linux) or `copy` (Windows)
-
-## Agent Mode
-
-Use `--json` for machine-readable output.
-
-```bash
-# list skills (json)
-skillbox list --json
-# status check (json)
-skillbox status --json
-# update one skill (json)
-skillbox update linting --json
-```
-
-### Agent Usage Snippet
-
-```text
-Use skillbox for skill management.
-
-Common workflow:
-1) skillbox list --json
-2) skillbox status --json
-3) skillbox update <name> --json
-
-If you need to install a new skill from a URL, run:
-# add skill from URL
-skillbox add <url> [--name <name>]
-
-If you need a skill from a repo, run:
-# list skills in repo
-skillbox add owner/repo --list
-# install single repo skill
-skillbox add owner/repo --skill <name>
-# install all repo skills
-skillbox add owner/repo --yes
 
 Note: GitHub unauthenticated API limits are 60 requests per hour per IP, so heavy repo usage may hit rate limits.
 

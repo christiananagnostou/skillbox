@@ -19,19 +19,17 @@ export const registerAdd = (program: Command): void => {
     .option("--global", "Install to user scope")
     .option("--agents <list>", "Comma-separated agent list")
     .option("--skill <skill>", "Skill name to install", collect)
-    .option("-y, --yes", "Install all skills from repo")
     .option("--list", "List skills in repo without installing")
     .option("--json", "JSON output")
     .action(async (url, options) => {
       try {
-        if (options.list || options.skill || options.yes || isRepoUrl(url)) {
+        if (options.list || options.skill || isRepoUrl(url)) {
           await handleRepoInstall(url, {
             global: options.global,
             agents: options.agents,
             json: options.json,
             list: options.list,
             skill: options.skill,
-            yes: options.yes,
           });
           return;
         }

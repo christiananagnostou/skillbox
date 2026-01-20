@@ -21,7 +21,6 @@ export type RepoAddOptions = {
   json?: boolean;
   list?: boolean;
   skill?: string[];
-  yes?: boolean;
 };
 
 type RepoInstallSummary = {
@@ -119,22 +118,6 @@ export const handleRepoInstall = async (input: string, options: RepoAddOptions) 
   const selected = normalizeSkillSelection(skillNames, options.skill ?? []);
   if (selected.length === 0) {
     throw new Error("No matching skills found. Use --list to see available skills.");
-  }
-
-  if (selected.length > 1 && !options.yes && (options.skill ?? []).length === 0) {
-    if (options.json) {
-      printJson({
-        ok: false,
-        command: "add",
-        error: { message: "Multiple skills found. Use --skill or --yes." },
-      });
-      return;
-    }
-    printInfo("Multiple skills found. Use --skill to select or --yes to install all.");
-    for (const name of skillNames) {
-      printInfo(`- ${name}`);
-    }
-    return;
   }
 
   const summary: RepoInstallSummary = { installed: [], updated: [], skipped: [], failed: [] };

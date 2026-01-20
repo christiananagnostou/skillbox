@@ -61,7 +61,6 @@ Examples:
 - skillbox add owner/repo --list
 - skillbox add https://github.com/org/repo --list
 - skillbox add owner/repo --skill linting
-- skillbox add owner/repo --yes
 - skillbox add https://github.com/org/repo/tree/main/skills/frontend-design
 
 Behavior:
