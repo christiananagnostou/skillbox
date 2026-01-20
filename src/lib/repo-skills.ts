@@ -60,7 +60,7 @@ const normalizeSkillFile = (skillPath: string): string => {
   return skillPath ? `${skillPath}/SKILL.md` : "SKILL.md";
 };
 
-const filterSkills = (entries: TreeEntry[], basePath?: string): RepoSkill[] => {
+const filterSkills = (entries: TreeEntry[], basePath?: string, includeAll = false): RepoSkill[] => {
   const skills: RepoSkill[] = [];
 
   for (const entry of entries) {
@@ -87,6 +87,10 @@ const filterSkills = (entries: TreeEntry[], basePath?: string): RepoSkill[] => {
     return skills;
   }
 
+  if (includeAll) {
+    return skills;
+  }
+
   return skills.filter((skill) => {
     const isRoot = skill.skillFile === "SKILL.md";
     if (isRoot) {
@@ -106,7 +110,8 @@ export const listRepoSkills = async (
   const normalized = await normalizeRepoRef(ref);
 
   const tree = await fetchJson<TreeResponse>(buildTreeUrl(normalized));
-  const skills = filterSkills(tree.tree, normalized.path);
+  const includeAll = normalized.repo.toLowerCase() === "skills" && !normalized.path;
+  const skills = filterSkills(tree.tree, normalized.path, includeAll);
 
   if (skills.length === 0) {
     throw new Error("No skills found in repository.");
