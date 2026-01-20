@@ -15,7 +15,7 @@ npm install -g skillbox
 
 ## Quick Start
 
-Skillbox will detect installed agents on your machine. Repo and URL installs can track their origin so your skills always stay up to date.
+Skillbox will detect installed agents on your machine. Repo and URL installs track their origin so updates stay one command away.
 
 > Tip: run `skillbox list` right after install to see existing skills.
 
