@@ -28,16 +28,23 @@ export const getProjectSkills = (skills: IndexedSkill[], projectRoot: string): s
   return (map.get(projectRoot) ?? []).sort();
 };
 
+export const getInstallPaths = (skill: IndexedSkill, projectRoot?: string | null): string[] => {
+  if (!projectRoot) {
+    return (skill.installs ?? []).map((install) => install.path);
+  }
+  return (skill.installs ?? [])
+    .filter(projectInstalls)
+    .filter((install) => install.projectRoot === projectRoot)
+    .map((install) => install.path);
+};
+
 export const getProjectInstallPaths = (
   skills: IndexedSkill[],
   projectRoot: string
 ): Map<string, string[]> => {
   const map = new Map<string, string[]>();
   for (const skill of skills) {
-    const paths = (skill.installs ?? [])
-      .filter(projectInstalls)
-      .filter((install) => install.projectRoot === projectRoot)
-      .map((install) => install.path);
+    const paths = getInstallPaths(skill, projectRoot);
     if (paths.length > 0) {
       map.set(skill.name, paths);
     }

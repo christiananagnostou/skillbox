@@ -14,7 +14,7 @@ Skillbox uses `~/.config/skillbox/config.json` to store defaults.
 
 Defaults:
 
-- defaultScope: project
+- defaultScope: user
 - defaultAgents: [] (all agents)
 - installMode: symlink (macOS/Linux) or copy (Windows) via `skillbox config set --install-mode <mode>`
 
@@ -46,11 +46,30 @@ Examples:
 
 Behavior:
 
-- Validates that the URL points to a valid skill (SKILL.md or repo).
+- Validates that the URL points to a valid skill.
 - If name cannot be inferred, requires --name.
 - Generates skill.json in canonical store.
 - Syncs to default agent targets unless --agents is provided.
 - Defaults to project scope unless --global is passed.
+
+### skillbox add <repo>
+
+Install skills from a GitHub repo (or repo URL). Supports repo paths like `https://github.com/org/repo/tree/main/skills/frontend-design` to install a specific skill folder. If the repo name is `skills` and no path is provided, Skillbox scans the whole repo tree for SKILL.md files.
+
+Examples:
+
+- skillbox add owner/repo --list
+- skillbox add https://github.com/org/repo --list
+- skillbox add owner/repo --skill linting
+- skillbox add https://github.com/org/repo/tree/main/skills/frontend-design
+
+Behavior:
+
+- Uses the GitHub tree API to discover skills.
+- Requires --skill or --yes when multiple skills are found.
+- Downloads the full skill directory into the canonical store (not just SKILL.md).
+- Tracks repo metadata so `skillbox update` refreshes from the repo.
+- Note: GitHub unauthenticated API limits are 60 requests per hour per IP, so heavy repo usage may hit rate limits.
 
 ### skillbox convert <url>
 
@@ -114,6 +133,21 @@ Examples:
 Behavior:
 
 - Updates canonical store first, then refreshes agent links or copies.
+
+### skillbox remove <name>
+
+Remove a skill from the canonical store and agent installs. Use --project to remove only a project’s installs and keep the canonical copy.
+
+Examples:
+
+- skillbox remove linting
+- skillbox remove linting --project /path/to/repo
+
+Behavior:
+
+- Removes agent installs for the skill.
+- Removes the canonical skill directory unless --project is used.
+- Updates the index to forget removed installs.
 
 ### skillbox import [path]
 

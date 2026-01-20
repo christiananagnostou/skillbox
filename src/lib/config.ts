@@ -16,7 +16,7 @@ const defaultInstallMode = (): "symlink" | "copy" => {
 const defaultConfig = (): SkillboxConfig => ({
   version: 1,
   defaultAgents: [],
-  defaultScope: "project",
+  defaultScope: "user",
   installMode: defaultInstallMode(),
 });
 

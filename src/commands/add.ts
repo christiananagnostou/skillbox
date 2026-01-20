@@ -5,21 +5,35 @@ import { parseSkillMarkdown, inferNameFromUrl, buildMetadata } from "../lib/skil
 import { handleCommandError } from "../lib/command.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
-import { buildTargets, installSkillToTargets } from "../lib/sync.js";
+import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 import { resolveRuntime, ensureProjectRegistered } from "../lib/runtime.js";
 import { loadConfig } from "../lib/config.js";
+import { handleRepoInstall, isRepoUrl } from "./add-repo.js";
 
 export const registerAdd = (program: Command): void => {
   program
     .command("add")
-    .argument("<url>", "Skill URL")
+    .argument("<url>", "Skill URL or repo")
     .option("--name <name>", "Override skill name")
     .option("--global", "Install to user scope")
     .option("--agents <list>", "Comma-separated agent list")
+    .option("--skill <skill>", "Skill name to install", collect)
+    .option("--list", "List skills in repo without installing")
     .option("--json", "JSON output")
     .action(async (url, options) => {
       try {
+        if (options.list || options.skill || isRepoUrl(url)) {
+          await handleRepoInstall(url, {
+            global: options.global,
+            agents: options.agents,
+            json: options.json,
+            list: options.list,
+            skill: options.skill,
+          });
+          return;
+        }
+
         const skillMarkdown = await fetchText(url);
         const parsed = parseSkillMarkdown(skillMarkdown);
         const inferred = inferNameFromUrl(url);
@@ -77,19 +91,20 @@ export const registerAdd = (program: Command): void => {
           const written = results
             .filter((result) => result.mode !== "skipped")
             .map((result) => result.path);
-          if (results.some((result) => result.mode === "skipped")) {
-            printInfo(
-              `Warning: symlink failed for ${agent}. Run "skillbox config set --install-mode copy" to use file copies.`
-            );
+          const warning = buildSymlinkWarning(agent, results);
+          if (warning) {
+            printInfo(warning);
           }
-          installed.push({ agent, scope, targets: written });
-          for (const target of written) {
-            installs.push({
-              scope,
-              agent,
-              path: target,
-              projectRoot: scope === "project" ? projectRoot : undefined,
-            });
+          if (written.length > 0) {
+            installed.push({ agent, scope, targets: written });
+            for (const target of written) {
+              installs.push({
+                scope,
+                agent,
+                path: target,
+                projectRoot: scope === "project" ? projectRoot : undefined,
+              });
+            }
           }
         }
 
@@ -120,7 +135,7 @@ export const registerAdd = (program: Command): void => {
         printInfo(`Source: ${url}`);
         printInfo(`Scope: ${scope}`);
         if (installed.length === 0) {
-          printInfo("No agent targets were updated.");
+          printInfo("No agent targets were updated (canonical store only).");
         } else {
           for (const entry of installed) {
             printInfo(`Updated ${entry.agent}: ${entry.targets.join(", ")}`);
@@ -130,4 +145,8 @@ export const registerAdd = (program: Command): void => {
         handleCommandError(options, "add", error);
       }
     });
+};
+
+const collect = (value: string, previous: string[] = []): string[] => {
+  return [...previous, value];
 };
