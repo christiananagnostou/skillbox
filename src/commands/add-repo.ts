@@ -108,9 +108,11 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
       printJson({ ok: true, command: "add", data: { repo: input, skills: skillNames } });
       return;
     }
-    printInfo(`Skills found: ${skillNames.length}`);
+    printInfo(`Repo Skills: ${ref.owner}/${ref.repo}`);
+    printInfo("");
+    printInfo(`Found ${skillNames.length} skill(s):`);
     for (const name of skillNames) {
-      printInfo(`- ${name}`);
+      printInfo(`  - ${name}`);
     }
     return;
   }
@@ -186,26 +188,50 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
   await saveIndex(sortIndex(index));
 
   if (options.json) {
-    printJson({ ok: true, command: "add", data: summary });
+    printJson({ ok: true, command: "add", data: { repo: `${ref.owner}/${ref.repo}`, ...summary } });
     return;
   }
 
-  if (summary.failed.length > 0) {
-    printInfo("Some skills failed to install:");
-    for (const failure of summary.failed) {
-      printInfo(`- ${failure.name}: ${failure.reason}`);
+  printInfo(`Skills Added from: ${ref.owner}/${ref.repo}`);
+  printInfo("");
+  printInfo("Source: git");
+  printInfo(`  ${ref.owner}/${ref.repo}${ref.path ? `/${ref.path}` : ""} (${ref.ref})`);
+
+  if (summary.installed.length > 0) {
+    printInfo("");
+    printInfo(`Installed (${summary.installed.length}):`);
+    for (const name of summary.installed) {
+      printInfo(`  ✓ ${name}`);
     }
   }
-  if (summary.installed.length > 0) {
-    printInfo(`Installed ${summary.installed.length} skill(s): ${summary.installed.join(", ")}`);
-  }
+
   if (summary.updated.length > 0) {
-    printInfo(`Updated ${summary.updated.length} skill(s): ${summary.updated.join(", ")}`);
+    printInfo("");
+    printInfo(`Updated (${summary.updated.length}):`);
+    for (const name of summary.updated) {
+      printInfo(`  ✓ ${name}`);
+    }
   }
+
   if (summary.skipped.length > 0) {
-    printInfo(`Skipped ${summary.skipped.length} skill(s): ${summary.skipped.join(", ")}`);
+    printInfo("");
+    printInfo(`Skipped (${summary.skipped.length}):`);
+    for (const name of summary.skipped) {
+      printInfo(`  - ${name} (missing description)`);
+    }
   }
-  if (summary.installed.length === 0 && summary.updated.length === 0) {
-    printInfo("No agent targets were updated (canonical store only).");
+
+  if (summary.failed.length > 0) {
+    printInfo("");
+    printInfo(`Failed (${summary.failed.length}):`);
+    for (const failure of summary.failed) {
+      printInfo(`  ✗ ${failure.name} (${failure.reason})`);
+    }
+  }
+
+  const total = summary.installed.length + summary.updated.length;
+  if (total === 0) {
+    printInfo("");
+    printInfo("No skills were added.");
   }
 }
