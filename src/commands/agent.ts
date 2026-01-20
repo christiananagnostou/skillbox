@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 
-const agentSnippet = `Use skillbox for skill management.
+const AGENT_SNIPPET = `Use skillbox for skill management.
 
 Common workflow:
 1) skillbox list --json
@@ -15,23 +15,16 @@ If a URL is not a valid skill, run:
 skillbox convert <url> --agent
 `;
 
-export const registerAgent = (program: Command): void => {
+export function registerAgent(program: Command): void {
   program
     .command("agent")
     .description("Print agent-friendly usage")
     .option("--json", "JSON output")
     .action((options) => {
       if (isJsonEnabled(options)) {
-        printJson({
-          ok: true,
-          command: "agent",
-          data: {
-            snippet: agentSnippet,
-          },
-        });
+        printJson({ ok: true, command: "agent", data: { snippet: AGENT_SNIPPET } });
         return;
       }
-
-      printInfo(agentSnippet);
+      printInfo(AGENT_SNIPPET);
     });
-};
+}

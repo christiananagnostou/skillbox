@@ -1,18 +1,18 @@
 import type { Command } from "commander";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
-import { loadIndex, saveIndex, sortIndex } from "../lib/index.js";
-import { skillDir } from "../lib/skill-store.js";
 import { handleCommandError } from "../lib/command.js";
+import { loadIndex, saveIndex, sortIndex } from "../lib/index.js";
+import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
+import { skillDir } from "../lib/skill-store.js";
 
-const removePaths = async (paths: string[]): Promise<void> => {
+async function removePaths(paths: string[]): Promise<void> {
   for (const target of paths) {
     await fs.rm(target, { recursive: true, force: true });
   }
-};
+}
 
-export const registerRemove = (program: Command): void => {
+export function registerRemove(program: Command): void {
   program
     .command("remove")
     .argument("<name>", "Skill name")
@@ -29,14 +29,13 @@ export const registerRemove = (program: Command): void => {
 
         const projectRoot = options.project ? path.resolve(options.project) : null;
         const installs = skill.installs ?? [];
-        const toRemove = projectRoot
-          ? installs.filter(
-              (install) =>
-                install.scope === "project" &&
-                install.projectRoot &&
-                install.projectRoot === projectRoot
-            )
-          : installs;
+
+        const isProjectInstall = (install: (typeof installs)[number]): boolean =>
+          install.scope === "project" &&
+          Boolean(install.projectRoot) &&
+          install.projectRoot === projectRoot;
+
+        const toRemove = projectRoot ? installs.filter(isProjectInstall) : installs;
 
         if (projectRoot && toRemove.length === 0) {
           throw new Error(`No installs found for ${name} in ${projectRoot}.`);
@@ -47,14 +46,7 @@ export const registerRemove = (program: Command): void => {
 
         let removedCanonical = false;
         if (projectRoot) {
-          const remaining = installs.filter(
-            (install) =>
-              !(
-                install.scope === "project" &&
-                install.projectRoot &&
-                install.projectRoot === projectRoot
-              )
-          );
+          const remaining = installs.filter((install) => !isProjectInstall(install));
           index.skills = index.skills.map((entry) =>
             entry.name === name
               ? { ...entry, installs: remaining.length > 0 ? remaining : undefined }
@@ -72,12 +64,7 @@ export const registerRemove = (program: Command): void => {
           printJson({
             ok: true,
             command: "remove",
-            data: {
-              name,
-              project: projectRoot,
-              removed: removedPaths,
-              removedCanonical,
-            },
+            data: { name, project: projectRoot, removed: removedPaths, removedCanonical },
           });
           return;
         }
@@ -91,4 +78,4 @@ export const registerRemove = (program: Command): void => {
         handleCommandError(options, "remove", error);
       }
     });
-};
+}

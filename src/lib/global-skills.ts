@@ -7,10 +7,10 @@ export type GlobalSkill = {
   installs: Array<{ scope: "user"; agent: AgentId; path: string }>;
 };
 
-export const discoverGlobalSkills = async (
+export async function discoverGlobalSkills(
   projectRoot: string,
   agents: AgentId[]
-): Promise<GlobalSkill[]> => {
+): Promise<GlobalSkill[]> {
   const agentPaths = getUserPathsForAgents(projectRoot, agents);
   const skillMap = new Map<string, GlobalSkill>();
 
@@ -33,4 +33,4 @@ export const discoverGlobalSkills = async (
   }
 
   return Array.from(skillMap.values());
-};
+}

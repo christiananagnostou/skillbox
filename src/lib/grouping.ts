@@ -9,11 +9,11 @@ export type GroupedStatus = {
   upToDate: string[];
 };
 
-export const groupNamesByKey = <T>(
+export function groupNamesByKey<T>(
   items: T[],
   nameOf: (item: T) => string,
   keysOf: (item: T) => string[]
-): GroupedNames[] => {
+): GroupedNames[] {
   const map = new Map<string, string[]>();
   for (const item of items) {
     const name = nameOf(item);
@@ -29,21 +29,21 @@ export const groupNamesByKey = <T>(
   return Array.from(map.entries())
     .map(([key, skills]) => ({ key, skills: skills.sort() }))
     .sort((a, b) => a.key.localeCompare(b.key));
-};
+}
 
-export const groupStatusByKey = <T>(
+export function groupStatusByKey<T>(
   items: T[],
   nameOf: (item: T) => string,
   outdatedOf: (item: T) => boolean,
   keysOf: (item: T) => string[]
-): GroupedStatus[] => {
-  const map = new Map<string, { key: string; outdated: string[]; upToDate: string[] }>();
+): GroupedStatus[] {
+  const map = new Map<string, GroupedStatus>();
   for (const item of items) {
     const name = nameOf(item);
-    const outdated = outdatedOf(item);
+    const isOutdated = outdatedOf(item);
     for (const key of keysOf(item)) {
       const entry = map.get(key) ?? { key, outdated: [], upToDate: [] };
-      if (outdated) {
+      if (isOutdated) {
         entry.outdated.push(name);
       } else {
         entry.upToDate.push(name);
@@ -53,4 +53,4 @@ export const groupStatusByKey = <T>(
   }
 
   return Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
-};
+}

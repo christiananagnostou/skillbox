@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { exists } from "./fs-utils.js";
 
 export type DiscoveredSkill = {
   name: string;
@@ -7,16 +8,7 @@ export type DiscoveredSkill = {
   skillFile: string;
 };
 
-const exists = async (target: string): Promise<boolean> => {
-  try {
-    await fs.access(target);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-export const discoverSkills = async (paths: string[]): Promise<DiscoveredSkill[]> => {
+export async function discoverSkills(paths: string[]): Promise<DiscoveredSkill[]> {
   const results: DiscoveredSkill[] = [];
 
   for (const root of paths) {
@@ -38,4 +30,4 @@ export const discoverSkills = async (paths: string[]): Promise<DiscoveredSkill[]
   }
 
   return results;
-};
+}

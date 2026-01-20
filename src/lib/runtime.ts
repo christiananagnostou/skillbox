@@ -1,8 +1,9 @@
 import type { AgentId } from "./agents.js";
 import { loadConfig } from "./config.js";
-import { findProjectRoot } from "./project-root.js";
-import { loadProjects, findProject, saveProjects, upsertProject } from "./projects.js";
 import { resolveAgentList } from "./options.js";
+import { findProjectRoot } from "./project-root.js";
+import { findProject, loadProjects, saveProjects, upsertProject } from "./projects.js";
+import type { ProjectEntry } from "./types.js";
 
 export type ResolvedRuntime = {
   projectRoot: string;
@@ -10,28 +11,31 @@ export type ResolvedRuntime = {
   agentList: AgentId[];
 };
 
-export const resolveRuntime = async (options: {
+export async function resolveRuntime(options: {
   global?: boolean;
   agents?: string;
-}): Promise<ResolvedRuntime> => {
+}): Promise<ResolvedRuntime> {
   const projectRoot = await findProjectRoot(process.cwd());
   const config = await loadConfig();
   const scope = options.global ? "user" : (config.defaultScope ?? "project");
   const agentList = resolveAgentList(options.agents, config);
 
   return { projectRoot, scope, agentList };
-};
+}
 
-export const ensureProjectRegistered = async (projectRoot: string, scope: "project" | "user") => {
+export async function ensureProjectRegistered(
+  projectRoot: string,
+  scope: "project" | "user"
+): Promise<ProjectEntry | undefined> {
   if (scope !== "project") {
     return undefined;
   }
   const projects = await loadProjects();
-  let projectEntry = findProject(projects, projectRoot);
-  if (!projectEntry) {
-    const merged = upsertProject(projects, projectRoot);
-    await saveProjects(merged);
-    projectEntry = findProject(merged, projectRoot);
+  const existing = findProject(projects, projectRoot);
+  if (existing) {
+    return existing;
   }
-  return projectEntry;
-};
+  const merged = upsertProject(projects, projectRoot);
+  await saveProjects(merged);
+  return findProject(merged, projectRoot);
+}

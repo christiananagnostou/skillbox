@@ -1,13 +1,10 @@
 import type { Command } from "commander";
-import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
-import { loadConfig, saveConfig } from "../lib/config.js";
 import { handleCommandError } from "../lib/command.js";
+import { loadConfig, saveConfig } from "../lib/config.js";
+import { collect } from "../lib/fs-utils.js";
+import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 
-const collect = (value: string, previous: string[] = []): string[] => {
-  return [...previous, value];
-};
-
-export const registerConfig = (program: Command): void => {
+export function registerConfig(program: Command): void {
   const config = program.command("config").description("View or edit skillbox config");
 
   config
@@ -40,16 +37,17 @@ export const registerConfig = (program: Command): void => {
         if (nextScope !== "project" && nextScope !== "user") {
           throw new Error("defaultScope must be 'project' or 'user'.");
         }
-        const addedAgents = options.addAgent ?? [];
-        const nextAgents = options.defaultAgent ?? current.defaultAgents;
-        const mergedAgents = Array.from(
-          new Set([...(nextAgents ?? []), ...addedAgents].filter((agent) => agent.length > 0))
-        );
 
         const nextMode = options.installMode ?? current.installMode;
         if (nextMode !== "symlink" && nextMode !== "copy") {
           throw new Error("installMode must be 'symlink' or 'copy'.");
         }
+
+        const addedAgents = options.addAgent ?? [];
+        const nextAgents = options.defaultAgent ?? current.defaultAgents;
+        const mergedAgents = Array.from(
+          new Set([...(nextAgents ?? []), ...addedAgents].filter((agent) => agent.length > 0))
+        );
 
         const next = {
           ...current,
@@ -70,4 +68,4 @@ export const registerConfig = (program: Command): void => {
         handleCommandError(options, "config set", error);
       }
     });
-};
+}

@@ -8,10 +8,10 @@ export type ParsedSkill = {
   checksum: string;
 };
 
-const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/;
+const FRONTMATTER_REGEX = /^---\n([\s\S]*?)\n---\n/;
 
-export const parseSkillMarkdown = (markdown: string): ParsedSkill => {
-  const match = markdown.match(frontmatterRegex);
+export function parseSkillMarkdown(markdown: string): ParsedSkill {
+  const match = markdown.match(FRONTMATTER_REGEX);
   let name: string | undefined;
   let description: string | undefined;
 
@@ -23,26 +23,24 @@ export const parseSkillMarkdown = (markdown: string): ParsedSkill => {
         continue;
       }
       const value = rest.join(":").trim();
-      if (key.trim() === "name") {
+      const trimmedKey = key.trim();
+      if (trimmedKey === "name") {
         name = value;
-      }
-      if (key.trim() === "description") {
+      } else if (trimmedKey === "description") {
         description = value;
       }
     }
   }
 
-  const checksum = hashContent(markdown);
-
   return {
     name,
     description,
     markdown,
-    checksum,
+    checksum: hashContent(markdown),
   };
-};
+}
 
-export const inferNameFromUrl = (url: string): string | null => {
+export function inferNameFromUrl(url: string): string | null {
   const cleaned = url.split("?")[0].split("#")[0];
   const parts = cleaned.split("/").filter(Boolean);
   if (parts.length === 0) {
@@ -57,13 +55,13 @@ export const inferNameFromUrl = (url: string): string | null => {
     return parts[parts.length - 2];
   }
   return last.replace(/\.md$/, "");
-};
+}
 
-export const buildMetadata = (
+export function buildMetadata(
   parsed: ParsedSkill,
   source: SkillSource,
   nameOverride?: string
-): SkillMetadata => {
+): SkillMetadata {
   const name = nameOverride ?? parsed.name;
   if (!name) {
     throw new Error("Skill metadata requires a name.");
@@ -78,4 +76,4 @@ export const buildMetadata = (
     checksum: parsed.checksum,
     updatedAt: new Date().toISOString(),
   };
-};
+}

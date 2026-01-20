@@ -2,7 +2,7 @@ import type { AgentId } from "./agents.js";
 import { allAgents, isAgentId } from "./agents.js";
 import type { SkillboxConfig } from "./config.js";
 
-export const parseAgentList = (value?: string): AgentId[] => {
+export function parseAgentList(value?: string): AgentId[] {
   if (!value) {
     return [];
   }
@@ -11,12 +11,9 @@ export const parseAgentList = (value?: string): AgentId[] => {
     .map((agent) => agent.trim())
     .filter((agent) => agent.length > 0)
     .filter(isAgentId);
-};
+}
 
-export const resolveAgentList = (
-  override: string | undefined,
-  config: SkillboxConfig
-): AgentId[] => {
+export function resolveAgentList(override: string | undefined, config: SkillboxConfig): AgentId[] {
   const parsed = parseAgentList(override);
   if (parsed.length > 0) {
     return parsed;
@@ -25,4 +22,4 @@ export const resolveAgentList = (
     return config.defaultAgents.filter(isAgentId);
   }
   return allAgents;
-};
+}

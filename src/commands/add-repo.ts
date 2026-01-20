@@ -1,20 +1,19 @@
-import type { RepoRef } from "../lib/github.js";
-import {
-  listRepoSkills,
-  normalizeRepoRef,
-  fetchRepoFile,
-  writeRepoSkillDirectory,
-} from "../lib/repo-skills.js";
-import { parseSkillMarkdown, buildMetadata } from "../lib/skill-parser.js";
-import { writeSkillMetadata } from "../lib/skill-store.js";
+import { getErrorMessage } from "../lib/command.js";
 import { loadConfig } from "../lib/config.js";
-import { buildProjectAgentPaths } from "../lib/project-paths.js";
-import { resolveRuntime, ensureProjectRegistered } from "../lib/runtime.js";
-import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
+import { parseRepoRef, type RepoRef } from "../lib/github.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { printInfo, printJson } from "../lib/output.js";
-import { parseRepoRef } from "../lib/github.js";
-import { getErrorMessage } from "../lib/command.js";
+import { buildProjectAgentPaths } from "../lib/project-paths.js";
+import {
+  fetchRepoFile,
+  listRepoSkills,
+  normalizeRepoRef,
+  writeRepoSkillDirectory,
+} from "../lib/repo-skills.js";
+import { ensureProjectRegistered, resolveRuntime } from "../lib/runtime.js";
+import { buildMetadata, parseSkillMarkdown } from "../lib/skill-parser.js";
+import { writeSkillMetadata } from "../lib/skill-store.js";
+import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
 
 export type RepoAddOptions = {
   global?: boolean;
@@ -31,27 +30,34 @@ type RepoInstallSummary = {
   failed: Array<{ name: string; reason: string }>;
 };
 
-const normalizeSkillSelection = (skills: string[], selections: string[]): string[] => {
+type InstallEntry = {
+  scope: "user" | "project";
+  agent: string;
+  path: string;
+  projectRoot?: string;
+};
+
+function normalizeSkillSelection(skills: string[], selections: string[]): string[] {
   if (selections.length === 0) {
     return skills;
   }
   const selectionSet = new Set(selections);
   return skills.filter((name) => selectionSet.has(name));
-};
+}
 
-const ensureRepoRef = async (input: string): Promise<RepoRef> => {
+async function ensureRepoRef(input: string): Promise<RepoRef> {
   const ref = parseRepoRef(input);
   if (!ref) {
     throw new Error("Unsupported repo URL or shorthand.");
   }
-  return await normalizeRepoRef(ref);
-};
+  return normalizeRepoRef(ref);
+}
 
-const installSkillTargets = async (
+async function installSkillTargets(
   skillName: string,
   options: RepoAddOptions,
-  installs: Array<{ scope: "user" | "project"; agent: string; path: string; projectRoot?: string }>
-) => {
+  installs: InstallEntry[]
+): Promise<void> {
   const { projectRoot, scope, agentList } = await resolveRuntime({
     global: options.global,
     agents: options.agents,
@@ -76,24 +82,22 @@ const installSkillTargets = async (
       printInfo(warning);
     }
 
-    if (written.length > 0) {
-      for (const target of written) {
-        installs.push({
-          scope,
-          agent,
-          path: target,
-          projectRoot: scope === "project" ? projectRoot : undefined,
-        });
-      }
+    for (const target of written) {
+      installs.push({
+        scope,
+        agent,
+        path: target,
+        projectRoot: scope === "project" ? projectRoot : undefined,
+      });
     }
   }
-};
+}
 
-export const isRepoUrl = (input: string): boolean => {
+export function isRepoUrl(input: string): boolean {
   return Boolean(parseRepoRef(input));
-};
+}
 
-export const handleRepoInstall = async (input: string, options: RepoAddOptions) => {
+export async function handleRepoInstall(input: string, options: RepoAddOptions): Promise<void> {
   const ref = await ensureRepoRef(input);
   const { skills } = await listRepoSkills(ref);
 
@@ -156,12 +160,7 @@ export const handleRepoInstall = async (input: string, options: RepoAddOptions) 
         updatedAt: metadata.updatedAt,
       });
 
-      const installs: Array<{
-        scope: "user" | "project";
-        agent: string;
-        path: string;
-        projectRoot?: string;
-      }> = [];
+      const installs: InstallEntry[] = [];
       await installSkillTargets(skill.name, options, installs);
 
       const nextIndex = upsertSkill(updated, {
@@ -209,4 +208,4 @@ export const handleRepoInstall = async (input: string, options: RepoAddOptions) 
   if (summary.installed.length === 0 && summary.updated.length === 0) {
     printInfo("No agent targets were updated (canonical store only).");
   }
-};
+}

@@ -2,9 +2,11 @@ import fs from "node:fs/promises";
 import { skillboxIndexPath, skillboxRoot } from "./paths.js";
 import type { SkillIndex } from "./types.js";
 
-const emptyIndex = (): SkillIndex => ({ version: 1, skills: [] });
+function emptyIndex(): SkillIndex {
+  return { version: 1, skills: [] };
+}
 
-export const loadIndex = async (): Promise<SkillIndex> => {
+export async function loadIndex(): Promise<SkillIndex> {
   const filePath = skillboxIndexPath();
   try {
     const content = await fs.readFile(filePath, "utf8");
@@ -15,16 +17,16 @@ export const loadIndex = async (): Promise<SkillIndex> => {
     }
     throw error;
   }
-};
+}
 
-export const saveIndex = async (index: SkillIndex): Promise<void> => {
+export async function saveIndex(index: SkillIndex): Promise<void> {
   await fs.mkdir(skillboxRoot(), { recursive: true });
   const filePath = skillboxIndexPath();
   const json = JSON.stringify(index, null, 2);
   await fs.writeFile(filePath, `${json}\n`, "utf8");
-};
+}
 
-export const upsertSkill = (index: SkillIndex, skill: SkillIndex["skills"][number]): SkillIndex => {
+export function upsertSkill(index: SkillIndex, skill: SkillIndex["skills"][number]): SkillIndex {
   const next = { ...index, skills: [...index.skills] };
   const existingIndex = next.skills.findIndex((item) => item.name === skill.name);
   if (existingIndex === -1) {
@@ -33,16 +35,16 @@ export const upsertSkill = (index: SkillIndex, skill: SkillIndex["skills"][numbe
   }
   next.skills[existingIndex] = { ...next.skills[existingIndex], ...skill };
   return next;
-};
+}
 
-export const sortIndex = (index: SkillIndex): SkillIndex => {
+export function sortIndex(index: SkillIndex): SkillIndex {
   const skills = [...index.skills].sort((a, b) => a.name.localeCompare(b.name));
   return { ...index, skills };
-};
+}
 
-export const ensureIndexSchema = (index: SkillIndex): SkillIndex => {
+export function ensureIndexSchema(index: SkillIndex): SkillIndex {
   if (!index.version) {
     return { version: 1, skills: index.skills ?? [] };
   }
   return index;
-};
+}
