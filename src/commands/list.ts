@@ -99,7 +99,7 @@ const listGlobalSkills = async (
   Array<{
     name: string;
     source: { type: "local" };
-    installs: Array<{ scope: "user" | "system"; agent: string; path: string }>;
+    installs: Array<{ scope: "user"; agent: string; path: string }>;
     namespace?: string;
     categories?: string[];
     tags?: string[];

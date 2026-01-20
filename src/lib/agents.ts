@@ -6,7 +6,6 @@ export type AgentId = "opencode" | "claude" | "cursor" | "codex" | "amp" | "anti
 export type AgentPathMap = {
   user: string[];
   project: string[];
-  system?: string[];
 };
 
 const home = os.homedir();
@@ -33,7 +32,6 @@ export const agentPaths = (projectRoot: string): Record<AgentId, AgentPathMap> =
   codex: {
     project: [path.join(projectRoot, ".codex", "skills")],
     user: [path.join(home, ".codex", "skills")],
-    system: [path.join(path.sep, "etc", "codex", "skills")],
   },
   amp: {
     project: [
@@ -53,11 +51,6 @@ export const allAgents: AgentId[] = ["opencode", "claude", "cursor", "codex", "a
 export const getUserAgentPaths = (projectRoot: string): string[] => {
   const paths = agentPaths(projectRoot);
   return Object.values(paths).flatMap((entry) => entry.user);
-};
-
-export const getSystemAgentPaths = (projectRoot: string): string[] => {
-  const paths = agentPaths(projectRoot);
-  return Object.values(paths).flatMap((entry) => entry.system ?? []);
 };
 
 const agentSet = new Set(allAgents);

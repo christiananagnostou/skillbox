@@ -6,14 +6,18 @@ export type SkillboxConfig = {
   version: 1;
   defaultAgents: string[];
   defaultScope: "project" | "user";
-  manageSystem: boolean;
+  installMode: "symlink" | "copy";
+};
+
+const defaultInstallMode = (): "symlink" | "copy" => {
+  return process.platform === "win32" ? "copy" : "symlink";
 };
 
 const defaultConfig = (): SkillboxConfig => ({
   version: 1,
   defaultAgents: [],
   defaultScope: "project",
-  manageSystem: false,
+  installMode: defaultInstallMode(),
 });
 
 export const configPath = (): string => path.join(skillboxRoot(), "config.json");

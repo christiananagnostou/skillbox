@@ -31,7 +31,7 @@ export const registerConfig = (program: Command): void => {
     .option("--default-agent <agent>", "Default agent", collect)
     .option("--add-agent <agent>", "Add to default agents", collect)
     .option("--default-scope <scope>", "Default scope: project or user")
-    .option("--manage-system", "Enable system scope operations")
+    .option("--install-mode <mode>", "Install mode: symlink or copy")
     .option("--json", "JSON output")
     .action(async (options) => {
       try {
@@ -46,11 +46,16 @@ export const registerConfig = (program: Command): void => {
           new Set([...(nextAgents ?? []), ...addedAgents].filter((agent) => agent.length > 0))
         );
 
+        const nextMode = options.installMode ?? current.installMode;
+        if (nextMode !== "symlink" && nextMode !== "copy") {
+          throw new Error("installMode must be 'symlink' or 'copy'.");
+        }
+
         const next = {
           ...current,
           defaultAgents: mergedAgents,
           defaultScope: nextScope,
-          manageSystem: options.manageSystem ?? current.manageSystem,
+          installMode: nextMode,
         };
 
         await saveConfig(next);

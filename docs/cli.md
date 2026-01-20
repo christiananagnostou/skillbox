@@ -7,7 +7,7 @@ This document defines the CLI surface for Skillbox. Commands are designed to be 
 - --json: Output structured JSON for agent consumption.
 - --global: Apply to user scope instead of project scope.
 - --agents <list>: Comma-separated list of agents to target.
-- --system: Enable system-scope management (e.g., /etc/codex/skills).
+- --project-only: Limit list output to indexed skills only.
 
 ## Config
 
@@ -17,7 +17,7 @@ Defaults:
 
 - defaultScope: project
 - defaultAgents: [] (all agents)
-- manageSystem: false
+- installMode: symlink (macOS/Linux) or copy (Windows)
 
 ## Onboarding
 
@@ -111,13 +111,11 @@ Examples:
 
 - skillbox update
 - skillbox update my-skill
-- skillbox update --system
 - skillbox update --project /path/to/repo
 
 Behavior:
 
-- Updates canonical store first, then overwrites agent copies.
-- Skips system scope unless --system is passed.
+- Updates canonical store first, then refreshes agent links or copies.
 
 ### skillbox import [path]
 
@@ -128,8 +126,6 @@ Examples:
 - skillbox import .claude/skills/my-skill
 - skillbox import /path/to/skill
 - skillbox import --global
-- skillbox import --system
-- skillbox import --global --system
 
 ### skillbox meta set <name>
 
@@ -159,7 +155,8 @@ Examples:
 - skillbox config set --default-scope user
 - skillbox config set --default-agent claude --default-agent cursor
 - skillbox config set --add-agent codex
-- skillbox config set --manage-system
+- skillbox config set --install-mode symlink
+- skillbox config set --install-mode copy
 
 ### skillbox project add <path>
 

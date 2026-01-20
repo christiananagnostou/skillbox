@@ -20,7 +20,7 @@ The primary goals are:
 - Agent-agnostic: support multiple agent folder layouts and conventions.
 - Reproducible: skill sources and checksums are tracked.
 - Transparent: status shows what is outdated and why.
-- Safe defaults: system-level locations are read-only unless explicitly enabled.
+- Safe defaults: canonical store with symlink installs.
 
 ## Primary Use Cases
 
@@ -96,7 +96,7 @@ The canonical store is the single source of truth for:
 - Source tracking (URL/git/local)
 - Metadata (namespace, categories, tags)
 
-Skills are copied into agent-specific folders during sync.
+Skills are linked into agent-specific folders during sync.
 
 ## Local Index
 
@@ -135,8 +135,8 @@ Status always checks the network (no cache by default). A cache may be added lat
 
 ## Sync Strategy
 
-- Default: overwrite agent copies during update.
-- System-level paths (e.g., /etc/codex/skills) are read-only unless --system is passed.
+- Default: symlink agent folders to the canonical store.
+- On Windows, Skillbox falls back to copies.
 
 ## CLI Commands (v1)
 
@@ -146,8 +146,8 @@ Core commands:
 - skillbox convert <url> [--name <name>] [--output <dir>] [--agent]
 - skillbox list [--group=category|namespace|source|project] [--project-only] [--json]
 - skillbox status [--group=project|source] [--json]
-- skillbox update [name] [--system] [--project <path>]
-- skillbox import [path] [--global] [--system]
+- skillbox update [name] [--project <path>]
+- skillbox import [path] [--global]
 - skillbox meta set <name> --category foo --tag bar --namespace baz
 - skillbox project add <path> [--agent-path agent=path]
 - skillbox project list

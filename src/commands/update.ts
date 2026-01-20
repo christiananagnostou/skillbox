@@ -4,22 +4,20 @@ import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { fetchText } from "../lib/fetcher.js";
 import { parseSkillMarkdown, buildMetadata } from "../lib/skill-parser.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
-import { copySkillToInstallPaths } from "../lib/sync.js";
+import { installSkillToTargets } from "../lib/sync.js";
 import path from "node:path";
-import { loadConfig } from "../lib/config.js";
 import { handleCommandError } from "../lib/command.js";
+import { loadConfig } from "../lib/config.js";
 
 export const registerUpdate = (program: Command): void => {
   program
     .command("update")
     .argument("[name]", "Skill name")
-    .option("--system", "Allow system-scope updates")
     .option("--project <path>", "Only update installs for a project")
     .option("--json", "JSON output")
     .action(async (name, options) => {
       try {
         const index = await loadIndex();
-        const config = await loadConfig();
         const targets = name ? index.skills.filter((skill) => skill.name === name) : index.skills;
 
         if (name && targets.length === 0) {
@@ -29,6 +27,7 @@ export const registerUpdate = (program: Command): void => {
         const updated: string[] = [];
         await ensureSkillsDir();
 
+        const config = await loadConfig();
         const projectRoot = options.project ? path.resolve(options.project) : null;
 
         for (const skill of targets) {
@@ -50,14 +49,13 @@ export const registerUpdate = (program: Command): void => {
           );
           await writeSkillFiles(skill.name, markdown, metadata);
 
-          const allowSystem = options.system || config.manageSystem;
           const installPaths = (skill.installs ?? [])
-            .filter((install) => allowSystem || install.scope !== "system")
+            .filter((install) => install.scope !== "system")
             .filter((install) => !projectRoot || install.projectRoot === projectRoot)
             .map((install) => install.path);
 
           if (installPaths.length > 0) {
-            await copySkillToInstallPaths(skill.name, installPaths);
+            await installSkillToTargets(skill.name, installPaths, config);
           }
 
           const nextIndex = upsertSkill(index, {
@@ -79,7 +77,6 @@ export const registerUpdate = (program: Command): void => {
             command: "update",
             data: {
               name: name ?? null,
-              system: Boolean(options.system),
               project: projectRoot,
               updated,
             },
