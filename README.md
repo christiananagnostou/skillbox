@@ -104,6 +104,8 @@ skillbox add owner/repo --list
 skillbox add owner/repo --skill <name>
 skillbox add owner/repo --yes
 
+Note: GitHub unauthenticated API limits are 60 requests per hour per IP, so heavy repo usage may hit rate limits.
+
 If a URL is not a valid skill, run:
 skillbox convert <url> --agent
 ```

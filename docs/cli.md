@@ -70,6 +70,7 @@ Behavior:
 - Requires --skill or --yes when multiple skills are found.
 - Downloads the full skill directory into the canonical store (not just SKILL.md).
 - Tracks repo metadata so `skillbox update` refreshes from the repo.
+- Note: GitHub unauthenticated API limits are 60 requests per hour per IP, so heavy repo usage may hit rate limits.
 
 ### skillbox convert <url>
 
