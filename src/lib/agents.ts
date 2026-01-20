@@ -53,6 +53,33 @@ export const getUserAgentPaths = (projectRoot: string): string[] => {
   return Object.values(paths).flatMap((entry) => entry.user);
 };
 
+export type AgentPath = {
+  agent: AgentId;
+  path: string;
+};
+
+export const getUserPathsForAgents = (projectRoot: string, agents: AgentId[]): AgentPath[] => {
+  const paths = agentPaths(projectRoot);
+  const seen = new Set<string>();
+  const results: AgentPath[] = [];
+
+  for (const agent of agents) {
+    const agentEntry = paths[agent];
+    if (!agentEntry) {
+      continue;
+    }
+    for (const userPath of agentEntry.user) {
+      if (seen.has(userPath)) {
+        continue;
+      }
+      seen.add(userPath);
+      results.push({ agent, path: userPath });
+    }
+  }
+
+  return results;
+};
+
 const agentSet = new Set(allAgents);
 
 export const isAgentId = (value: string): value is AgentId => {
