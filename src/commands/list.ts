@@ -8,11 +8,10 @@ export const registerList = (program: Command): void => {
   program
     .command("list")
     .option("--group <group>", "Group by category, namespace, source, project")
-    .option("--project-only", "Only show project-indexed skills")
     .option("--json", "JSON output")
     .action(async (options) => {
       const index = await loadIndex();
-      const globalSkills = options.projectOnly ? [] : await listGlobalSkills(index.skills);
+      const globalSkills = await listGlobalSkills(index.skills);
       const skills = [...index.skills, ...globalSkills];
       const groupedProjects = groupByProject(skills);
       const groupedSources = groupBySource(skills);

@@ -7,7 +7,6 @@ This document defines the CLI surface for Skillbox. Commands are designed to be 
 - --json: Output structured JSON for agent consumption.
 - --global: Apply to user scope instead of project scope.
 - --agents <list>: Comma-separated list of agents to target.
-- --project-only: Limit list output to indexed skills only.
 
 ## Config
 
@@ -71,7 +70,7 @@ Behavior:
 
 ### skillbox list
 
-List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects. Use --project-only to skip user discovery.
+List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects.
 
 Examples:
 
@@ -82,7 +81,6 @@ Examples:
 - skillbox list --group=project
 - skillbox list --group=category
 - skillbox list --json
-- skillbox list --project-only --json
 
 ### skillbox status
 

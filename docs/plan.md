@@ -144,7 +144,7 @@ Core commands:
 
 - skillbox add <url> [--name <name>] [--global] [--agents ...]
 - skillbox convert <url> [--name <name>] [--output <dir>] [--agent]
-- skillbox list [--group=category|namespace|source|project] [--project-only] [--json]
+- skillbox list [--group=category|namespace|source|project] [--json]
 - skillbox status [--group=project|source] [--json]
 - skillbox update [name] [--project <path>]
 - skillbox import [path] [--global]
