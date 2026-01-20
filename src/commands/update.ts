@@ -9,6 +9,7 @@ import { installSkillToTargets } from "../lib/sync.js";
 import { handleCommandError } from "../lib/command.js";
 import { loadConfig } from "../lib/config.js";
 import { fetchRepoFile, normalizeRepoRef, writeRepoSkillDirectory } from "../lib/repo-skills.js";
+import { getInstallPaths } from "../lib/installs.js";
 
 export const registerUpdate = (program: Command): void => {
   program
@@ -47,9 +48,7 @@ export const registerUpdate = (program: Command): void => {
             );
             await writeSkillFiles(skill.name, markdown, metadata);
 
-            const installPaths = (skill.installs ?? [])
-              .filter((install) => !projectRoot || install.projectRoot === projectRoot)
-              .map((install) => install.path);
+            const installPaths = getInstallPaths(skill, projectRoot);
 
             if (installPaths.length > 0) {
               await installSkillToTargets(skill.name, installPaths, config);
@@ -101,9 +100,7 @@ export const registerUpdate = (program: Command): void => {
           const metadata = buildMetadata(parsed, source, skill.name);
           await writeSkillMetadata(skill.name, metadata);
 
-          const installPaths = (skill.installs ?? [])
-            .filter((install) => !projectRoot || install.projectRoot === projectRoot)
-            .map((install) => install.path);
+          const installPaths = getInstallPaths(skill, projectRoot);
 
           if (installPaths.length > 0) {
             await installSkillToTargets(skill.name, installPaths, config);

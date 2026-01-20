@@ -10,10 +10,11 @@ import { writeSkillMetadata } from "../lib/skill-store.js";
 import { loadConfig } from "../lib/config.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 import { resolveRuntime, ensureProjectRegistered } from "../lib/runtime.js";
-import { buildTargets, installSkillToTargets } from "../lib/sync.js";
+import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { printInfo, printJson } from "../lib/output.js";
 import { parseRepoRef } from "../lib/github.js";
+import { getErrorMessage } from "../lib/command.js";
 
 export type RepoAddOptions = {
   global?: boolean;
@@ -70,14 +71,9 @@ const installSkillTargets = async (
       .filter((result) => result.mode !== "skipped")
       .map((result) => result.path);
 
-    const skipped = results.filter((result) => result.mode === "skipped");
-    if (skipped.length > 0) {
-      const details = skipped
-        .map((result) => `${result.path}: ${result.error ?? "unknown error"}`)
-        .join("; ");
-      printInfo(
-        `Warning: symlink failed for ${agent}. ${details}. Remove the existing target or run "skillbox config set --install-mode copy" to use file copies.`
-      );
+    const warning = buildSymlinkWarning(agent, results);
+    if (warning) {
+      printInfo(warning);
     }
 
     if (written.length > 0) {
@@ -183,7 +179,7 @@ export const handleRepoInstall = async (input: string, options: RepoAddOptions) 
         summary.installed.push(skill.name);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "unknown";
+      const message = getErrorMessage(error, "unknown");
       summary.failed.push({ name: skill.name, reason: message });
     }
   }

@@ -3,6 +3,7 @@ import path from "node:path";
 import { skillDir } from "./skill-store.js";
 import type { AgentId, AgentPathMap } from "./agents.js";
 import type { SkillboxConfig } from "./config.js";
+import { getErrorMessage } from "./command.js";
 
 export const ensureDir = async (dir: string): Promise<void> => {
   await fs.mkdir(dir, { recursive: true });
@@ -31,6 +32,17 @@ export type InstallResult = {
   error?: string;
 };
 
+export const buildSymlinkWarning = (agent: string, results: InstallResult[]): string | null => {
+  const skipped = results.filter((result) => result.mode === "skipped");
+  if (skipped.length === 0) {
+    return null;
+  }
+  const details = skipped
+    .map((result) => `${result.path}: ${result.error ?? "unknown error"}`)
+    .join("; ");
+  return `Warning: symlink failed for ${agent}. ${details}. Remove the existing target or run "skillbox config set --install-mode copy" to use file copies.`;
+};
+
 export const installSkillToTargets = async (
   skillName: string,
   targets: string[],
@@ -49,7 +61,7 @@ export const installSkillToTargets = async (
         results.push({ path: targetDir, mode: "symlink" });
         continue;
       } catch (error) {
-        const message = error instanceof Error ? error.message : "unknown error";
+        const message = getErrorMessage(error, "unknown error");
         results.push({ path: targetDir, mode: "skipped", error: message });
         continue;
       }

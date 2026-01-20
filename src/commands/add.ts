@@ -5,7 +5,7 @@ import { parseSkillMarkdown, inferNameFromUrl, buildMetadata } from "../lib/skil
 import { handleCommandError } from "../lib/command.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
-import { buildTargets, installSkillToTargets } from "../lib/sync.js";
+import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 import { resolveRuntime, ensureProjectRegistered } from "../lib/runtime.js";
 import { loadConfig } from "../lib/config.js";
@@ -91,14 +91,9 @@ export const registerAdd = (program: Command): void => {
           const written = results
             .filter((result) => result.mode !== "skipped")
             .map((result) => result.path);
-          const skipped = results.filter((result) => result.mode === "skipped");
-          if (skipped.length > 0) {
-            const details = skipped
-              .map((result) => `${result.path}: ${result.error ?? "unknown error"}`)
-              .join("; ");
-            printInfo(
-              `Warning: symlink failed for ${agent}. ${details}. Remove the existing target or run "skillbox config set --install-mode copy" to use file copies.`
-            );
+          const warning = buildSymlinkWarning(agent, results);
+          if (warning) {
+            printInfo(warning);
           }
           if (written.length > 0) {
             installed.push({ agent, scope, targets: written });
