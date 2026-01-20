@@ -39,7 +39,7 @@ skillbox add <url> [--name <name>] [--global] [--agents ...]
 skillbox convert <url> [--name <name>] [--output <dir>] [--agent]
 skillbox list [--group=category|namespace|source|project] [--json]
 skillbox status [--group=project|source] [--json]
-skillbox update [name] [--system] [--project <path>]
+skillbox update [name] [--project <path>]
 skillbox import <path>
 skillbox meta set <name> --category foo --tag bar --namespace baz
 skillbox agent
@@ -117,11 +117,9 @@ Agent paths (default):
 - OpenCode: `.opencode/skills/`, `~/.config/opencode/skills/` (Claude-compatible `.claude/skills/` also supported)
 - Claude: `.claude/skills/`, `~/.claude/skills/`
 - Cursor: `.cursor/skills/`, `.claude/skills/`, `~/.cursor/skills/`, `~/.claude/skills/`
-- Codex: `$REPO_ROOT/.codex/skills/`, `~/.codex/skills/`, `/etc/codex/skills` (system)
+- Codex: `$REPO_ROOT/.codex/skills/`, `~/.codex/skills/`
 - Amp: `.agents/skills/`, `~/.config/agents/skills/` (Claude-compatible `.claude/skills/` also supported)
 - Antigravity: `.agent/skills/`, `~/.gemini/antigravity/skills/`
-
-Note: only Codex defines a system scope path.
 
 ## Usage with AI Agents
 

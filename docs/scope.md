@@ -46,10 +46,6 @@ Implementation note:
 
 - A link stores a pointer to the canonical store and syncs from it.
 
-## System Scope
-
-Codex supports /etc/codex/skills. Skillbox lists these by default but does not modify them unless --system is passed.
-
 ## Precedence (Agent-Side)
 
 Some agents apply precedence rules (e.g., project overrides user). Skillbox does not change these rules; it only manages file placement.
@@ -58,4 +54,3 @@ Some agents apply precedence rules (e.g., project overrides user). Skillbox does
 
 - --global: target user scope
 - --agents: override default agents for install/sync
-- --system: allow system-scope updates

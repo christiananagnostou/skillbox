@@ -71,7 +71,7 @@ Behavior:
 
 ### skillbox list
 
-List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects. Use --project-only to skip user/system discovery.
+List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects. Use --project-only to skip user discovery.
 
 Examples:
 
