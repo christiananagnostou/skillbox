@@ -1,17 +1,22 @@
 import type { Command } from "commander";
+import type { AgentId } from "../lib/agents.js";
 import { isJsonEnabled, printInfo, printJson, printGroupList } from "../lib/output.js";
 import { loadIndex } from "../lib/index.js";
 import { groupNamesByKey } from "../lib/grouping.js";
 import { discoverGlobalSkills } from "../lib/global-skills.js";
+import { resolveRuntime } from "../lib/runtime.js";
 
 export const registerList = (program: Command): void => {
   program
     .command("list")
     .option("--group <group>", "Group by category, namespace, source, project")
     .option("--json", "JSON output")
+    .option("--global", "List user-scope skills only")
+    .option("--agents <agents>", "Comma-separated list of agents to scan")
     .action(async (options) => {
+      const runtime = await resolveRuntime(options);
       const index = await loadIndex();
-      const globalSkills = await listGlobalSkills(index.skills);
+      const globalSkills = await listGlobalSkills(index.skills, runtime.agentList);
       const skills = [...index.skills, ...globalSkills];
       const groupedProjects = groupByProject(skills);
       const groupedSources = groupBySource(skills);
@@ -93,7 +98,8 @@ const groupByProject = (
 };
 
 const listGlobalSkills = async (
-  existing: Array<{ name: string }>
+  existing: Array<{ name: string }>,
+  agents: AgentId[]
 ): Promise<
   Array<{
     name: string;
@@ -106,7 +112,7 @@ const listGlobalSkills = async (
 > => {
   const projectRoot = process.cwd();
   const seen = new Set(existing.map((skill) => skill.name));
-  const discovered = await discoverGlobalSkills(projectRoot);
+  const discovered = await discoverGlobalSkills(projectRoot, agents);
   return discovered
     .filter((skill) => !seen.has(skill.name))
     .map((skill) => ({

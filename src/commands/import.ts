@@ -7,13 +7,16 @@ import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { handleCommandError } from "../lib/command.js";
 import { discoverSkills } from "../lib/discovery.js";
-import { getUserAgentPaths } from "../lib/agents.js";
+import type { AgentId } from "../lib/agents.js";
+import { getUserPathsForAgents } from "../lib/agents.js";
+import { resolveRuntime } from "../lib/runtime.js";
 
 export const registerImport = (program: Command): void => {
   program
     .command("import")
     .argument("[path]", "Path to skill directory")
     .option("--global", "Import skills from user agent folders")
+    .option("--agents <agents>", "Comma-separated list of agents to scan")
     .option("--json", "JSON output")
     .action(async (inputPath, options) => {
       try {
@@ -22,7 +25,8 @@ export const registerImport = (program: Command): void => {
         }
 
         if (options.global) {
-          const summary = await importGlobalSkills();
+          const runtime = await resolveRuntime(options);
+          const summary = await importGlobalSkills(runtime.agentList);
           if (isJsonEnabled(options)) {
             printJson({
               ok: true,
@@ -81,19 +85,39 @@ type GlobalImportSummary = {
   skipped: string[];
 };
 
-const importGlobalSkills = async (): Promise<GlobalImportSummary> => {
-  const projectRoot = process.cwd();
-  const paths = getUserAgentPaths(projectRoot);
+type DiscoveredWithAgent = {
+  name: string;
+  skillDir: string;
+  skillFile: string;
+  agent: AgentId;
+};
 
-  const discovered = await discoverSkills(paths);
+const importGlobalSkills = async (agents: AgentId[]): Promise<GlobalImportSummary> => {
+  const projectRoot = process.cwd();
+  const agentPaths = getUserPathsForAgents(projectRoot, agents);
+
+  const discovered: DiscoveredWithAgent[] = [];
+  const seenSkills = new Set<string>();
+
+  for (const { agent, path: agentPath } of agentPaths) {
+    const skills = await discoverSkills([agentPath]);
+    for (const skill of skills) {
+      if (seenSkills.has(skill.name)) {
+        continue;
+      }
+      seenSkills.add(skill.name);
+      discovered.push({ ...skill, agent });
+    }
+  }
+
   const index = await loadIndex();
-  const seen = new Set(index.skills.map((skill) => skill.name));
+  const indexed = new Set(index.skills.map((skill) => skill.name));
 
   const imported = new Set<string>();
   const skipped = new Set<string>();
 
   for (const skill of discovered) {
-    if (seen.has(skill.name)) {
+    if (indexed.has(skill.name)) {
       skipped.add(skill.name);
       continue;
     }
@@ -118,7 +142,7 @@ const importGlobalSkills = async (): Promise<GlobalImportSummary> => {
       installs: [
         {
           scope: "user",
-          agent: "unknown",
+          agent: skill.agent,
           path: skill.skillDir,
         },
       ],
