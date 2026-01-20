@@ -13,11 +13,11 @@ Agent-specific skill folders are linked to the canonical store:
 - On macOS/Linux, Skillbox creates a symlink from the agent folder to the canonical skill folder.
 - On Windows, Skillbox falls back to a full copy automatically.
 
-If symlink creation fails on Unix, Skillbox logs a warning and skips the install unless `installMode` is set to `copy`.
+If symlink creation fails on Unix, Skillbox logs a warning and skips the install unless `skillbox config set --install-mode copy` is used.
 
 ## installMode
 
-`installMode` controls how skills are synced into agent folders:
+`installMode` controls how skills are synced into agent folders (set with `skillbox config set --install-mode <mode>`):
 
 - `symlink` (default on Unix/macOS): create symlinks to the canonical store.
 - `copy` (default on Windows): copy files into agent folders.

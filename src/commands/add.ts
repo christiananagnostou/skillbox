@@ -79,7 +79,7 @@ export const registerAdd = (program: Command): void => {
             .map((result) => result.path);
           if (results.some((result) => result.mode === "skipped")) {
             printInfo(
-              `Warning: symlink failed for ${agent}. Set installMode=copy to use file copies.`
+              `Warning: symlink failed for ${agent}. Run "skillbox config set --install-mode copy" to use file copies.`
             );
           }
           installed.push({ agent, scope, targets: written });

@@ -17,7 +17,7 @@ Defaults:
 
 - defaultScope: project
 - defaultAgents: [] (all agents)
-- installMode: symlink (macOS/Linux) or copy (Windows)
+- installMode: symlink (macOS/Linux) or copy (Windows) via `skillbox config set --install-mode <mode>`
 
 ## Onboarding
 
