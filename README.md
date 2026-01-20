@@ -17,7 +17,7 @@ npm install -g skillbox
 
 ## Quick Start
 
-Skillbox will detect installed agents on your machine. If detection succeeds, `enter` accepts the detected list; if nothing is found, `enter` defaults to all agents or you can type a comma-separated list.
+Skillbox will detect installed agents on your machine. If detection succeeds, `enter` accepts the detected list; if nothing is found, `enter` defaults to all agents or you can type a comma-separated list. Repo installs can source multiple skills from GitHub and track their repo origin for updates.
 
 Tip: run `skillbox list` right after install to see existing skills.
 
@@ -25,6 +25,9 @@ Skillbox links agent folders to the canonical store using symlinks on macOS/Linu
 
 ```bash
 skillbox add https://example.com/skills/linting/SKILL.md
+skillbox add owner/repo --list
+skillbox add owner/repo --skill linting
+skillbox add owner/repo --yes
 skillbox list
 skillbox status
 skillbox update linting
@@ -36,6 +39,7 @@ skillbox update linting
 
 ```bash
 skillbox add <url> [--name <name>] [--global] [--agents ...]
+skillbox add <repo> [--list] [--skill <name>] [--yes] [--global] [--agents ...]
 skillbox convert <url> [--name <name>] [--output <dir>] [--agent]
 skillbox list [--group=category|namespace|source|project] [--json]
 skillbox status [--group=project|source] [--json]
@@ -93,6 +97,11 @@ Common workflow:
 
 If you need to install a new skill from a URL, run:
 skillbox add <url> [--name <name>]
+
+If you need a skill from a repo, run:
+skillbox add owner/repo --list
+skillbox add owner/repo --skill <name>
+skillbox add owner/repo --yes
 
 If a URL is not a valid skill, run:
 skillbox convert <url> --agent

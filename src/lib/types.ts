@@ -4,6 +4,8 @@ export type SkillSource = {
   type: SkillSourceType;
   url?: string;
   repo?: string;
+  path?: string;
+  ref?: string;
 };
 
 export type SkillMetadata = {

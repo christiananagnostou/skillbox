@@ -46,11 +46,30 @@ Examples:
 
 Behavior:
 
-- Validates that the URL points to a valid skill (SKILL.md or repo).
+- Validates that the URL points to a valid skill.
 - If name cannot be inferred, requires --name.
 - Generates skill.json in canonical store.
 - Syncs to default agent targets unless --agents is provided.
 - Defaults to project scope unless --global is passed.
+
+### skillbox add <repo>
+
+Install skills from a GitHub repo (or repo URL). Supports repo paths like `https://github.com/org/repo/tree/main/skills/frontend-design` to install a specific skill folder.
+
+Examples:
+
+- skillbox add owner/repo --list
+- skillbox add https://github.com/org/repo --list
+- skillbox add owner/repo --skill linting
+- skillbox add owner/repo --yes
+- skillbox add https://github.com/org/repo/tree/main/skills/frontend-design
+
+Behavior:
+
+- Uses the GitHub tree API to discover skills.
+- Requires --skill or --yes when multiple skills are found.
+- Downloads the full skill directory into the canonical store (not just SKILL.md).
+- Tracks repo metadata so `skillbox update` refreshes from the repo.
 
 ### skillbox convert <url>
 

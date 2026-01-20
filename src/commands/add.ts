@@ -9,17 +9,33 @@ import { buildTargets, installSkillToTargets } from "../lib/sync.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 import { resolveRuntime, ensureProjectRegistered } from "../lib/runtime.js";
 import { loadConfig } from "../lib/config.js";
+import { handleRepoInstall, isRepoUrl } from "./add-repo.js";
 
 export const registerAdd = (program: Command): void => {
   program
     .command("add")
-    .argument("<url>", "Skill URL")
+    .argument("<url>", "Skill URL or repo")
     .option("--name <name>", "Override skill name")
     .option("--global", "Install to user scope")
     .option("--agents <list>", "Comma-separated agent list")
+    .option("--skill <skill>", "Skill name to install", collect)
+    .option("-y, --yes", "Install all skills from repo")
+    .option("--list", "List skills in repo without installing")
     .option("--json", "JSON output")
     .action(async (url, options) => {
       try {
+        if (options.list || options.skill || options.yes || isRepoUrl(url)) {
+          await handleRepoInstall(url, {
+            global: options.global,
+            agents: options.agents,
+            json: options.json,
+            list: options.list,
+            skill: options.skill,
+            yes: options.yes,
+          });
+          return;
+        }
+
         const skillMarkdown = await fetchText(url);
         const parsed = parseSkillMarkdown(skillMarkdown);
         const inferred = inferNameFromUrl(url);
@@ -130,4 +146,8 @@ export const registerAdd = (program: Command): void => {
         handleCommandError(options, "add", error);
       }
     });
+};
+
+const collect = (value: string, previous: string[] = []): string[] => {
+  return [...previous, value];
 };
