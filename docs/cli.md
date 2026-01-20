@@ -14,7 +14,7 @@ Skillbox uses `~/.config/skillbox/config.json` to store defaults.
 
 Defaults:
 
-- defaultScope: project
+- defaultScope: user
 - defaultAgents: [] (all agents)
 - installMode: symlink (macOS/Linux) or copy (Windows) via `skillbox config set --install-mode <mode>`
 
