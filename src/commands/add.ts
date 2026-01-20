@@ -5,9 +5,10 @@ import { parseSkillMarkdown, inferNameFromUrl, buildMetadata } from "../lib/skil
 import { handleCommandError } from "../lib/command.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
-import { buildTargets, copySkillToTargets } from "../lib/sync.js";
+import { buildTargets, installSkillToTargets } from "../lib/sync.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 import { resolveRuntime, ensureProjectRegistered } from "../lib/runtime.js";
+import { loadConfig } from "../lib/config.js";
 
 export const registerAdd = (program: Command): void => {
   program
@@ -57,6 +58,7 @@ export const registerAdd = (program: Command): void => {
         });
         const projectEntry = await ensureProjectRegistered(projectRoot, scope);
         const paths = buildProjectAgentPaths(projectRoot, projectEntry);
+        const config = await loadConfig();
         const installed: { agent: string; scope: string; targets: string[] }[] = [];
         const installs = [] as Array<{
           scope: "user" | "project";
@@ -71,7 +73,15 @@ export const registerAdd = (program: Command): void => {
             continue;
           }
           const targets = buildTargets(agent, map, scope).map((target) => target.path);
-          const written = await copySkillToTargets(skillName, targets);
+          const results = await installSkillToTargets(skillName, targets, config);
+          const written = results
+            .filter((result) => result.mode !== "skipped")
+            .map((result) => result.path);
+          if (results.some((result) => result.mode === "skipped")) {
+            printInfo(
+              `Warning: symlink failed for ${agent}. Run "skillbox config set --install-mode copy" to use file copies.`
+            );
+          }
           installed.push({ agent, scope, targets: written });
           for (const target of written) {
             installs.push({

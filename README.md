@@ -21,6 +21,8 @@ Skillbox will detect installed agents on your machine. If detection succeeds, `e
 
 Tip: run `skillbox list` right after install to see existing skills.
 
+Skillbox links agent folders to the canonical store using symlinks on macOS/Linux and file copies on Windows.
+
 ```bash
 skillbox add https://example.com/skills/linting/SKILL.md
 skillbox list
@@ -37,7 +39,7 @@ skillbox add <url> [--name <name>] [--global] [--agents ...]
 skillbox convert <url> [--name <name>] [--output <dir>] [--agent]
 skillbox list [--group=category|namespace|source|project] [--json]
 skillbox status [--group=project|source] [--json]
-skillbox update [name] [--system] [--project <path>]
+skillbox update [name] [--project <path>]
 skillbox import <path>
 skillbox meta set <name> --category foo --tag bar --namespace baz
 skillbox agent
@@ -59,14 +61,15 @@ skillbox config get
 skillbox config set --default-scope user
 skillbox config set --default-agent claude --default-agent cursor
 skillbox config set --add-agent codex
-skillbox config set --manage-system
+skillbox config set --install-mode symlink
+skillbox config set --install-mode copy
 ```
 
 Config defaults live in `~/.config/skillbox/config.json`:
 
 - `defaultScope`: `project` (default) or `user`
 - `defaultAgents`: empty array means all agents
-- `manageSystem`: `false` by default
+- `installMode`: `symlink` (macOS/Linux) or `copy` (Windows)
 
 ## Agent Mode
 
@@ -114,11 +117,9 @@ Agent paths (default):
 - OpenCode: `.opencode/skills/`, `~/.config/opencode/skills/` (Claude-compatible `.claude/skills/` also supported)
 - Claude: `.claude/skills/`, `~/.claude/skills/`
 - Cursor: `.cursor/skills/`, `.claude/skills/`, `~/.cursor/skills/`, `~/.claude/skills/`
-- Codex: `$REPO_ROOT/.codex/skills/`, `~/.codex/skills/`, `/etc/codex/skills` (system)
+- Codex: `$REPO_ROOT/.codex/skills/`, `~/.codex/skills/`
 - Amp: `.agents/skills/`, `~/.config/agents/skills/` (Claude-compatible `.claude/skills/` also supported)
 - Antigravity: `.agent/skills/`, `~/.gemini/antigravity/skills/`
-
-Note: only Codex defines a system scope path.
 
 ## Usage with AI Agents
 

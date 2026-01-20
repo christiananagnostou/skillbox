@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { skillDir } from "./skill-store.js";
 import type { AgentId, AgentPathMap } from "./agents.js";
+import type { SkillboxConfig } from "./config.js";
 
 export const ensureDir = async (dir: string): Promise<void> => {
   await fs.mkdir(dir, { recursive: true });
@@ -20,22 +21,44 @@ const copyFiles = async (sourceDir: string, targetDir: string): Promise<void> =>
   }
 };
 
-export const copySkillToTargets = async (
-  skillName: string,
-  targets: string[]
-): Promise<string[]> => {
-  const sourceDir = skillDir(skillName);
+const createSymlink = async (sourceDir: string, targetDir: string): Promise<void> => {
+  await fs.symlink(sourceDir, targetDir, "dir");
+};
 
-  const writtenPaths: string[] = [];
+export type InstallResult = {
+  path: string;
+  mode: "symlink" | "copy" | "skipped";
+};
+
+export const installSkillToTargets = async (
+  skillName: string,
+  targets: string[],
+  config: SkillboxConfig
+): Promise<InstallResult[]> => {
+  const sourceDir = skillDir(skillName);
+  const results: InstallResult[] = [];
 
   for (const targetRoot of targets) {
     const targetDir = path.join(targetRoot, skillName);
+    await ensureDir(targetRoot);
+
+    if (config.installMode === "symlink") {
+      try {
+        await createSymlink(sourceDir, targetDir);
+        results.push({ path: targetDir, mode: "symlink" });
+        continue;
+      } catch {
+        results.push({ path: targetDir, mode: "skipped" });
+        continue;
+      }
+    }
+
     await ensureDir(targetDir);
     await copyFiles(sourceDir, targetDir);
-    writtenPaths.push(targetDir);
+    results.push({ path: targetDir, mode: "copy" });
   }
 
-  return writtenPaths;
+  return results;
 };
 
 export const copySkillToInstallPaths = async (
@@ -51,18 +74,15 @@ export const copySkillToInstallPaths = async (
 
 export type SyncTarget = {
   agent: AgentId;
-  scope: "user" | "project" | "system";
+  scope: "user" | "project";
   path: string;
 };
 
 export const buildTargets = (
   agent: AgentId,
   paths: AgentPathMap,
-  scope: "user" | "project" | "system"
+  scope: "user" | "project"
 ): SyncTarget[] => {
-  if (scope === "system") {
-    return (paths.system ?? []).map((pathValue) => ({ agent, scope, path: pathValue }));
-  }
   const list = scope === "user" ? paths.user : paths.project;
   return list.map((pathValue) => ({ agent, scope, path: pathValue }));
 };

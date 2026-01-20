@@ -7,7 +7,6 @@ This document defines the CLI surface for Skillbox. Commands are designed to be 
 - --json: Output structured JSON for agent consumption.
 - --global: Apply to user scope instead of project scope.
 - --agents <list>: Comma-separated list of agents to target.
-- --system: Enable system-scope management (e.g., /etc/codex/skills).
 
 ## Config
 
@@ -17,7 +16,7 @@ Defaults:
 
 - defaultScope: project
 - defaultAgents: [] (all agents)
-- manageSystem: false
+- installMode: symlink (macOS/Linux) or copy (Windows) via `skillbox config set --install-mode <mode>`
 
 ## Onboarding
 
@@ -71,7 +70,7 @@ Behavior:
 
 ### skillbox list
 
-List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects. Use --project-only to skip user/system discovery.
+List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects.
 
 Examples:
 
@@ -82,11 +81,10 @@ Examples:
 - skillbox list --group=project
 - skillbox list --group=category
 - skillbox list --json
-- skillbox list --project-only --json
 
 ### skillbox status
 
-Check for outdated skills by comparing local checksums to remote sources. Use --group to view by project or source. System skills are skipped unless manageSystem is enabled in config.
+Check for outdated skills by comparing local checksums to remote sources. Use --group to view by project or source.
 
 Examples:
 
@@ -111,13 +109,11 @@ Examples:
 
 - skillbox update
 - skillbox update my-skill
-- skillbox update --system
 - skillbox update --project /path/to/repo
 
 Behavior:
 
-- Updates canonical store first, then overwrites agent copies.
-- Skips system scope unless --system is passed.
+- Updates canonical store first, then refreshes agent links or copies.
 
 ### skillbox import [path]
 
@@ -128,8 +124,6 @@ Examples:
 - skillbox import .claude/skills/my-skill
 - skillbox import /path/to/skill
 - skillbox import --global
-- skillbox import --system
-- skillbox import --global --system
 
 ### skillbox meta set <name>
 
@@ -159,7 +153,8 @@ Examples:
 - skillbox config set --default-scope user
 - skillbox config set --default-agent claude --default-agent cursor
 - skillbox config set --add-agent codex
-- skillbox config set --manage-system
+- skillbox config set --install-mode symlink
+- skillbox config set --install-mode copy
 
 ### skillbox project add <path>
 

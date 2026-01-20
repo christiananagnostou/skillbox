@@ -37,7 +37,7 @@ class Skillbox < Formula
   depends_on "node"
 
   def install
-    system "npm", "install", "-g", "skillbox"
+    command "npm", "install", "-g", "skillbox"
   end
 end
 ```

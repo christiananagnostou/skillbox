@@ -4,7 +4,6 @@ import { loadIndex, saveIndex } from "../lib/index.js";
 import { fetchText } from "../lib/fetcher.js";
 import { hashContent } from "../lib/skill-store.js";
 import { groupStatusByKey } from "../lib/grouping.js";
-import { loadConfig } from "../lib/config.js";
 import { handleCommandError } from "../lib/command.js";
 
 export const registerStatus = (program: Command): void => {
@@ -15,7 +14,6 @@ export const registerStatus = (program: Command): void => {
     .action(async (options) => {
       try {
         const index = await loadIndex();
-        const config = await loadConfig();
         const results = [] as Array<{
           name: string;
           source: string;
@@ -23,7 +21,6 @@ export const registerStatus = (program: Command): void => {
           localChecksum: string;
           remoteChecksum?: string;
           projects: string[];
-          system: boolean;
         }>;
 
         for (const skill of index.skills) {
@@ -35,20 +32,6 @@ export const registerStatus = (program: Command): void => {
             )
           );
 
-          const allowSystem = config.manageSystem;
-          const isSystem = (skill.installs ?? []).some((install) => install.scope === "system");
-          if (isSystem && !allowSystem) {
-            results.push({
-              name: skill.name,
-              source: skill.source.type,
-              outdated: false,
-              localChecksum: skill.checksum,
-              projects,
-              system: true,
-            });
-            continue;
-          }
-
           if (skill.source.type !== "url" || !skill.source.url) {
             results.push({
               name: skill.name,
@@ -56,7 +39,6 @@ export const registerStatus = (program: Command): void => {
               outdated: false,
               localChecksum: skill.checksum,
               projects,
-              system: isSystem,
             });
             continue;
           }
@@ -73,7 +55,6 @@ export const registerStatus = (program: Command): void => {
             localChecksum: skill.checksum,
             remoteChecksum,
             projects,
-            system: false,
           });
         }
 
