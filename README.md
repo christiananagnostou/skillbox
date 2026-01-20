@@ -163,7 +163,7 @@ git clone https://github.com/christiananagnostou/skillbox
 cd skillbox
 npm install
 npm run build
-npm link --global
+npm link
 ```
 
 ## License

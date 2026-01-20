@@ -26,6 +26,7 @@ export type RepoAddOptions = {
 
 type RepoInstallSummary = {
   installed: string[];
+  updated: string[];
   skipped: string[];
   failed: Array<{ name: string; reason: string }>;
 };
@@ -130,13 +131,15 @@ export const handleRepoInstall = async (input: string, options: RepoAddOptions) 
     return;
   }
 
-  const summary: RepoInstallSummary = { installed: [], skipped: [], failed: [] };
+  const summary: RepoInstallSummary = { installed: [], updated: [], skipped: [], failed: [] };
   const index = await loadIndex();
 
   for (const skill of skills) {
     if (!selected.includes(skill.name)) {
       continue;
     }
+
+    const alreadyInstalled = index.skills.some((entry) => entry.name === skill.name);
 
     try {
       const skillMarkdown = await fetchRepoFile(
@@ -185,7 +188,11 @@ export const handleRepoInstall = async (input: string, options: RepoAddOptions) 
       });
 
       index.skills = nextIndex.skills;
-      summary.installed.push(skill.name);
+      if (alreadyInstalled) {
+        summary.updated.push(skill.name);
+      } else {
+        summary.installed.push(skill.name);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown";
       summary.failed.push({ name: skill.name, reason: message });
@@ -207,6 +214,9 @@ export const handleRepoInstall = async (input: string, options: RepoAddOptions) 
   }
   if (summary.installed.length > 0) {
     printInfo(`Installed ${summary.installed.length} skill(s): ${summary.installed.join(", ")}`);
+  }
+  if (summary.updated.length > 0) {
+    printInfo(`Updated ${summary.updated.length} skill(s): ${summary.updated.join(", ")}`);
   }
   if (summary.skipped.length > 0) {
     printInfo(`Skipped ${summary.skipped.length} skill(s): ${summary.skipped.join(", ")}`);

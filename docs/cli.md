@@ -54,7 +54,7 @@ Behavior:
 
 ### skillbox add <repo>
 
-Install skills from a GitHub repo (or repo URL). Supports repo paths like `https://github.com/org/repo/tree/main/skills/frontend-design` to install a specific skill folder.
+Install skills from a GitHub repo (or repo URL). Supports repo paths like `https://github.com/org/repo/tree/main/skills/frontend-design` to install a specific skill folder. If the repo name is `skills` and no path is provided, Skillbox scans the whole repo tree for SKILL.md files.
 
 Examples:
 
