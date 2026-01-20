@@ -93,19 +93,25 @@ export const registerAdd = (program: Command): void => {
           const written = results
             .filter((result) => result.mode !== "skipped")
             .map((result) => result.path);
-          if (results.some((result) => result.mode === "skipped")) {
+          const skipped = results.filter((result) => result.mode === "skipped");
+          if (skipped.length > 0) {
+            const details = skipped
+              .map((result) => `${result.path}: ${result.error ?? "unknown error"}`)
+              .join("; ");
             printInfo(
-              `Warning: symlink failed for ${agent}. Run "skillbox config set --install-mode copy" to use file copies.`
+              `Warning: symlink failed for ${agent}. ${details}. Remove the existing target or run "skillbox config set --install-mode copy" to use file copies.`
             );
           }
-          installed.push({ agent, scope, targets: written });
-          for (const target of written) {
-            installs.push({
-              scope,
-              agent,
-              path: target,
-              projectRoot: scope === "project" ? projectRoot : undefined,
-            });
+          if (written.length > 0) {
+            installed.push({ agent, scope, targets: written });
+            for (const target of written) {
+              installs.push({
+                scope,
+                agent,
+                path: target,
+                projectRoot: scope === "project" ? projectRoot : undefined,
+              });
+            }
           }
         }
 
@@ -136,7 +142,7 @@ export const registerAdd = (program: Command): void => {
         printInfo(`Source: ${url}`);
         printInfo(`Scope: ${scope}`);
         if (installed.length === 0) {
-          printInfo("No agent targets were updated.");
+          printInfo("No agent targets were updated (canonical store only).");
         } else {
           for (const entry of installed) {
             printInfo(`Updated ${entry.agent}: ${entry.targets.join(", ")}`);

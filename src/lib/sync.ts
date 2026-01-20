@@ -28,6 +28,7 @@ const createSymlink = async (sourceDir: string, targetDir: string): Promise<void
 export type InstallResult = {
   path: string;
   mode: "symlink" | "copy" | "skipped";
+  error?: string;
 };
 
 export const installSkillToTargets = async (
@@ -47,8 +48,9 @@ export const installSkillToTargets = async (
         await createSymlink(sourceDir, targetDir);
         results.push({ path: targetDir, mode: "symlink" });
         continue;
-      } catch {
-        results.push({ path: targetDir, mode: "skipped" });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "unknown error";
+        results.push({ path: targetDir, mode: "skipped", error: message });
         continue;
       }
     }
