@@ -1,12 +1,115 @@
 import type { Command } from "commander";
 import type { AgentId } from "../lib/agents.js";
-import { isJsonEnabled, printInfo, printJson, printGroupList } from "../lib/output.js";
-import { loadIndex } from "../lib/index.js";
-import { groupNamesByKey } from "../lib/grouping.js";
 import { discoverGlobalSkills } from "../lib/global-skills.js";
+import { groupNamesByKey } from "../lib/grouping.js";
+import { loadIndex } from "../lib/index.js";
+import { isJsonEnabled, printGroupList, printInfo, printJson } from "../lib/output.js";
 import { resolveRuntime } from "../lib/runtime.js";
 
-export const registerList = (program: Command): void => {
+type SkillWithInstalls = {
+  name: string;
+  installs?: Array<{ projectRoot?: string; scope: string }>;
+};
+
+type SkillWithSource = {
+  name: string;
+  source: { type: string };
+};
+
+type SkillWithNamespace = {
+  name: string;
+  namespace?: string;
+};
+
+type SkillWithCategories = {
+  name: string;
+  categories?: string[];
+};
+
+function groupByProject(skills: SkillWithInstalls[]): Array<{ root: string; skills: string[] }> {
+  const grouped = groupNamesByKey(
+    skills,
+    (skill) => skill.name,
+    (skill) =>
+      (skill.installs ?? [])
+        .filter((install) => install.scope === "project" && install.projectRoot)
+        .map((install) => install.projectRoot as string)
+  );
+  return grouped.map((group) => ({ root: group.key, skills: group.skills }));
+}
+
+function groupBySource(skills: SkillWithSource[]): Array<{ source: string; skills: string[] }> {
+  const grouped = groupNamesByKey(
+    skills,
+    (skill) => skill.name,
+    (skill) => [skill.source.type]
+  );
+  return grouped.map((group) => ({ source: group.key, skills: group.skills }));
+}
+
+function groupByNamespace(
+  skills: SkillWithNamespace[]
+): Array<{ namespace: string; skills: string[] }> {
+  const grouped = groupNamesByKey(
+    skills,
+    (skill) => skill.name,
+    (skill) => [skill.namespace ?? "(none)"]
+  );
+  return grouped
+    .map((group) => ({ namespace: group.key, skills: group.skills }))
+    .sort((a, b) => {
+      if (a.namespace === "(none)") return 1;
+      if (b.namespace === "(none)") return -1;
+      return a.namespace.localeCompare(b.namespace);
+    });
+}
+
+function groupByCategory(
+  skills: SkillWithCategories[]
+): Array<{ category: string; skills: string[] }> {
+  const grouped = groupNamesByKey(
+    skills,
+    (skill) => skill.name,
+    (skill) => skill.categories ?? ["(uncategorized)"]
+  );
+  return grouped
+    .map((group) => ({ category: group.key, skills: group.skills }))
+    .sort((a, b) => {
+      if (a.category === "(uncategorized)") return 1;
+      if (b.category === "(uncategorized)") return -1;
+      return a.category.localeCompare(b.category);
+    });
+}
+
+type GlobalSkillEntry = {
+  name: string;
+  source: { type: "local" };
+  installs: Array<{ scope: "user"; agent: string; path: string }>;
+  namespace?: string;
+  categories?: string[];
+  tags?: string[];
+};
+
+async function listGlobalSkills(
+  existing: Array<{ name: string }>,
+  agents: AgentId[]
+): Promise<GlobalSkillEntry[]> {
+  const projectRoot = process.cwd();
+  const seen = new Set(existing.map((skill) => skill.name));
+  const discovered = await discoverGlobalSkills(projectRoot, agents);
+  return discovered
+    .filter((skill) => !seen.has(skill.name))
+    .map((skill) => ({
+      name: skill.name,
+      source: { type: "local" as const },
+      installs: skill.installs,
+      namespace: undefined,
+      categories: undefined,
+      tags: undefined,
+    }));
+}
+
+export function registerList(program: Command): void {
   program
     .command("list")
     .option("--group <group>", "Group by category, namespace, source, project")
@@ -58,10 +161,7 @@ export const registerList = (program: Command): void => {
       if (options.group === "namespace") {
         printGroupList(
           "Namespaces",
-          groupedNamespaces.map((namespace) => ({
-            key: namespace.namespace,
-            items: namespace.skills,
-          }))
+          groupedNamespaces.map((ns) => ({ key: ns.namespace, items: ns.skills }))
         );
         return;
       }
@@ -69,7 +169,7 @@ export const registerList = (program: Command): void => {
       if (options.group === "category") {
         printGroupList(
           "Categories",
-          groupedCategories.map((category) => ({ key: category.category, items: category.skills }))
+          groupedCategories.map((cat) => ({ key: cat.category, items: cat.skills }))
         );
         return;
       }
@@ -81,93 +181,4 @@ export const registerList = (program: Command): void => {
         printInfo(`- ${skill.name}${namespace} [${source}]`);
       }
     });
-};
-
-const groupByProject = (
-  skills: Array<{ name: string; installs?: Array<{ projectRoot?: string; scope: string }> }>
-) => {
-  const grouped = groupNamesByKey(
-    skills,
-    (skill) => skill.name,
-    (skill) =>
-      (skill.installs ?? [])
-        .filter((install) => install.scope === "project" && install.projectRoot)
-        .map((install) => install.projectRoot as string)
-  );
-  return grouped.map((group) => ({ root: group.key, skills: group.skills }));
-};
-
-const listGlobalSkills = async (
-  existing: Array<{ name: string }>,
-  agents: AgentId[]
-): Promise<
-  Array<{
-    name: string;
-    source: { type: "local" };
-    installs: Array<{ scope: "user"; agent: string; path: string }>;
-    namespace?: string;
-    categories?: string[];
-    tags?: string[];
-  }>
-> => {
-  const projectRoot = process.cwd();
-  const seen = new Set(existing.map((skill) => skill.name));
-  const discovered = await discoverGlobalSkills(projectRoot, agents);
-  return discovered
-    .filter((skill) => !seen.has(skill.name))
-    .map((skill) => ({
-      name: skill.name,
-      source: { type: "local" },
-      installs: skill.installs,
-      namespace: undefined,
-      categories: undefined,
-      tags: undefined,
-    }));
-};
-
-const groupBySource = (skills: Array<{ name: string; source: { type: string } }>) => {
-  const grouped = groupNamesByKey(
-    skills,
-    (skill) => skill.name,
-    (skill) => [skill.source.type]
-  );
-  return grouped.map((group) => ({ source: group.key, skills: group.skills }));
-};
-
-const groupByNamespace = (skills: Array<{ name: string; namespace?: string }>) => {
-  const grouped = groupNamesByKey(
-    skills,
-    (skill) => skill.name,
-    (skill) => [skill.namespace ?? "(none)"]
-  );
-  return grouped
-    .map((group) => ({ namespace: group.key, skills: group.skills }))
-    .sort((a, b) => {
-      if (a.namespace === "(none)") {
-        return 1;
-      }
-      if (b.namespace === "(none)") {
-        return -1;
-      }
-      return a.namespace.localeCompare(b.namespace);
-    });
-};
-
-const groupByCategory = (skills: Array<{ name: string; categories?: string[] }>) => {
-  const grouped = groupNamesByKey(
-    skills,
-    (skill) => skill.name,
-    (skill) => skill.categories ?? ["(uncategorized)"]
-  );
-  return grouped
-    .map((group) => ({ category: group.key, skills: group.skills }))
-    .sort((a, b) => {
-      if (a.category === "(uncategorized)") {
-        return 1;
-      }
-      if (b.category === "(uncategorized)") {
-        return -1;
-      }
-      return a.category.localeCompare(b.category);
-    });
-};
+}

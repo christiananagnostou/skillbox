@@ -1,16 +1,16 @@
 import type { IndexedSkill, SkillInstall } from "./types.js";
 
-const projectInstalls = (
+function isProjectInstall(
   install: SkillInstall
-): install is SkillInstall & { projectRoot: string } => {
+): install is SkillInstall & { projectRoot: string } {
   return install.scope === "project" && Boolean(install.projectRoot);
-};
+}
 
-export const collectProjectSkills = (skills: IndexedSkill[]): Map<string, string[]> => {
+export function collectProjectSkills(skills: IndexedSkill[]): Map<string, string[]> {
   const map = new Map<string, string[]>();
   for (const skill of skills) {
     for (const install of skill.installs ?? []) {
-      if (!projectInstalls(install)) {
+      if (!isProjectInstall(install)) {
         continue;
       }
       const existing = map.get(install.projectRoot) ?? [];
@@ -21,27 +21,28 @@ export const collectProjectSkills = (skills: IndexedSkill[]): Map<string, string
     }
   }
   return map;
-};
+}
 
-export const getProjectSkills = (skills: IndexedSkill[], projectRoot: string): string[] => {
+export function getProjectSkills(skills: IndexedSkill[], projectRoot: string): string[] {
   const map = collectProjectSkills(skills);
   return (map.get(projectRoot) ?? []).sort();
-};
+}
 
-export const getInstallPaths = (skill: IndexedSkill, projectRoot?: string | null): string[] => {
+export function getInstallPaths(skill: IndexedSkill, projectRoot?: string | null): string[] {
+  const installs = skill.installs ?? [];
   if (!projectRoot) {
-    return (skill.installs ?? []).map((install) => install.path);
+    return installs.map((install) => install.path);
   }
-  return (skill.installs ?? [])
-    .filter(projectInstalls)
+  return installs
+    .filter(isProjectInstall)
     .filter((install) => install.projectRoot === projectRoot)
     .map((install) => install.path);
-};
+}
 
-export const getProjectInstallPaths = (
+export function getProjectInstallPaths(
   skills: IndexedSkill[],
   projectRoot: string
-): Map<string, string[]> => {
+): Map<string, string[]> {
   const map = new Map<string, string[]>();
   for (const skill of skills) {
     const paths = getInstallPaths(skill, projectRoot);
@@ -50,4 +51,4 @@ export const getProjectInstallPaths = (
     }
   }
   return map;
-};
+}

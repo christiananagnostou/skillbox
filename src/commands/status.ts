@@ -1,12 +1,57 @@
 import type { Command } from "commander";
-import { isJsonEnabled, printInfo, printJson, printList } from "../lib/output.js";
-import { loadIndex, saveIndex } from "../lib/index.js";
-import { fetchText } from "../lib/fetcher.js";
-import { hashContent } from "../lib/skill-store.js";
-import { groupStatusByKey } from "../lib/grouping.js";
 import { handleCommandError } from "../lib/command.js";
+import { fetchText } from "../lib/fetcher.js";
+import { groupStatusByKey } from "../lib/grouping.js";
+import { loadIndex, saveIndex } from "../lib/index.js";
+import { isJsonEnabled, printInfo, printJson, printList } from "../lib/output.js";
+import { hashContent } from "../lib/skill-store.js";
 
-export const registerStatus = (program: Command): void => {
+type StatusResult = {
+  name: string;
+  source: string;
+  outdated: boolean;
+  localChecksum: string;
+  remoteChecksum?: string;
+  projects: string[];
+};
+
+function groupByProject(results: StatusResult[]): Array<{
+  root: string;
+  outdated: string[];
+  upToDate: string[];
+}> {
+  const grouped = groupStatusByKey(
+    results,
+    (result) => result.name,
+    (result) => result.outdated,
+    (result) => result.projects
+  );
+  return grouped.map((group) => ({
+    root: group.key,
+    outdated: group.outdated,
+    upToDate: group.upToDate,
+  }));
+}
+
+function groupBySource(results: StatusResult[]): Array<{
+  source: string;
+  outdated: string[];
+  upToDate: string[];
+}> {
+  const grouped = groupStatusByKey(
+    results,
+    (result) => result.name,
+    (result) => result.outdated,
+    (result) => [result.source]
+  );
+  return grouped.map((group) => ({
+    source: group.key,
+    outdated: group.outdated,
+    upToDate: group.upToDate,
+  }));
+}
+
+export function registerStatus(program: Command): void {
   program
     .command("status")
     .option("--group <group>", "Group by project or source")
@@ -14,14 +59,7 @@ export const registerStatus = (program: Command): void => {
     .action(async (options) => {
       try {
         const index = await loadIndex();
-        const results = [] as Array<{
-          name: string;
-          source: string;
-          outdated: boolean;
-          localChecksum: string;
-          remoteChecksum?: string;
-          projects: string[];
-        }>;
+        const results: StatusResult[] = [];
 
         for (const skill of index.skills) {
           const projects = Array.from(
@@ -115,34 +153,4 @@ export const registerStatus = (program: Command): void => {
         handleCommandError(options, "status", error);
       }
     });
-};
-
-const groupByProject = (
-  results: Array<{ name: string; outdated: boolean; projects: string[] }>
-) => {
-  const grouped = groupStatusByKey(
-    results,
-    (result) => result.name,
-    (result) => result.outdated,
-    (result) => result.projects
-  );
-  return grouped.map((group) => ({
-    root: group.key,
-    outdated: group.outdated,
-    upToDate: group.upToDate,
-  }));
-};
-
-const groupBySource = (results: Array<{ name: string; outdated: boolean; source: string }>) => {
-  const grouped = groupStatusByKey(
-    results,
-    (result) => result.name,
-    (result) => result.outdated,
-    (result) => [result.source]
-  );
-  return grouped.map((group) => ({
-    source: group.key,
-    outdated: group.outdated,
-    upToDate: group.upToDate,
-  }));
-};
+}

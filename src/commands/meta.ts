@@ -1,10 +1,11 @@
 import type { Command } from "commander";
+import { handleCommandError } from "../lib/command.js";
+import { collect } from "../lib/fs-utils.js";
+import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { readSkillMetadata, writeSkillMetadata } from "../lib/skill-store.js";
-import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
-import { handleCommandError } from "../lib/command.js";
 
-export const registerMeta = (program: Command): void => {
+export function registerMeta(program: Command): void {
   const meta = program.command("meta").description("Manage skill metadata");
 
   meta
@@ -61,8 +62,4 @@ export const registerMeta = (program: Command): void => {
         handleCommandError(options, "meta set", error);
       }
     });
-};
-
-const collect = (value: string, previous: string[] = []): string[] => {
-  return [...previous, value];
-};
+}

@@ -1,7 +1,7 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import os from "node:os";
+import path from "node:path";
 import type { AgentId } from "./agents.js";
+import { exists } from "./fs-utils.js";
 
 const home = os.homedir();
 
@@ -14,16 +14,7 @@ const agentRoots: Record<AgentId, string[]> = {
   antigravity: [path.join(home, ".gemini", "antigravity")],
 };
 
-const exists = async (target: string): Promise<boolean> => {
-  try {
-    await fs.access(target);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-export const detectAgents = async (): Promise<AgentId[]> => {
+export async function detectAgents(): Promise<AgentId[]> {
   const detected: AgentId[] = [];
   for (const [agent, roots] of Object.entries(agentRoots) as Array<[AgentId, string[]]>) {
     const matches = await Promise.all(roots.map((root) => exists(root)));
@@ -32,4 +23,4 @@ export const detectAgents = async (): Promise<AgentId[]> => {
     }
   }
   return detected;
-};
+}

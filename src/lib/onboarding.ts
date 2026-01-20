@@ -1,17 +1,17 @@
-import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+import readline from "node:readline/promises";
+import { detectAgents } from "./agent-detect.js";
 import { allAgents, isAgentId } from "./agents.js";
 import { loadConfig, saveConfig } from "./config.js";
-import { detectAgents } from "./agent-detect.js";
 
-const formatPrompt = (detected: string[]): string => {
+function formatPrompt(detected: string[]): string {
   if (detected.length === 0) {
     return `Which agents do you use? (comma-separated) [${allAgents.join(", ")}]: `;
   }
   return `Detected agents: ${detected.join(", ")}. Press enter to accept or edit: `;
-};
+}
 
-const promptAgents = async (): Promise<string[]> => {
+async function promptAgents(): Promise<string[]> {
   const detected = await detectAgents();
   const rl = readline.createInterface({ input, output });
   const answer = await rl.question(formatPrompt(detected));
@@ -29,18 +29,14 @@ const promptAgents = async (): Promise<string[]> => {
   }
 
   return detected.length > 0 ? detected : allAgents;
-};
+}
 
-export const runOnboarding = async (): Promise<void> => {
+export async function runOnboarding(): Promise<void> {
   const config = await loadConfig();
   if (config.defaultAgents.length > 0) {
     return;
   }
 
   const selected = await promptAgents();
-  const next = {
-    ...config,
-    defaultAgents: selected,
-  };
-  await saveConfig(next);
-};
+  await saveConfig({ ...config, defaultAgents: selected });
+}

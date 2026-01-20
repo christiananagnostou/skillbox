@@ -1,12 +1,12 @@
 import type { Command } from "commander";
-import path from "node:path";
 import fs from "node:fs/promises";
-import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
-import { fetchText } from "../lib/fetcher.js";
-import { inferNameFromUrl } from "../lib/skill-parser.js";
+import path from "node:path";
 import { handleCommandError } from "../lib/command.js";
+import { fetchText } from "../lib/fetcher.js";
+import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
+import { inferNameFromUrl } from "../lib/skill-parser.js";
 
-export const registerConvert = (program: Command): void => {
+export function registerConvert(program: Command): void {
   program
     .command("convert")
     .argument("<url>", "Source URL to convert")
@@ -29,7 +29,22 @@ export const registerConvert = (program: Command): void => {
           : path.join(process.cwd(), "skillbox-convert", skillName);
 
         const description = "Draft skill generated from source content.";
-        const draftMarkdown = `---\nname: ${skillName}\ndescription: ${description}\n---\n\n# ${skillName}\n\n## Source\n- See source.txt for the raw content.\n\n## When to use\n- TODO\n\n## Instructions\n- TODO\n`;
+        const draftMarkdown = `---
+name: ${skillName}
+description: ${description}
+---
+
+# ${skillName}
+
+## Source
+- See source.txt for the raw content.
+
+## When to use
+- TODO
+
+## Instructions
+- TODO
+`;
 
         const metadata = {
           name: skillName,
@@ -73,4 +88,4 @@ export const registerConvert = (program: Command): void => {
         handleCommandError(options, "convert", error);
       }
     });
-};
+}
