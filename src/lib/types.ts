@@ -32,7 +32,7 @@ export type IndexedSkill = {
   installs?: SkillInstall[];
 };
 
-export type SkillInstallScope = "user" | "project" | "system";
+export type SkillInstallScope = "user" | "project";
 
 export type SkillInstall = {
   scope: SkillInstallScope;

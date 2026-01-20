@@ -50,7 +50,6 @@ export const registerUpdate = (program: Command): void => {
           await writeSkillFiles(skill.name, markdown, metadata);
 
           const installPaths = (skill.installs ?? [])
-            .filter((install) => install.scope !== "system")
             .filter((install) => !projectRoot || install.projectRoot === projectRoot)
             .map((install) => install.path);
 

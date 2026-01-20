@@ -32,17 +32,6 @@ export const registerStatus = (program: Command): void => {
             )
           );
 
-          if ((skill.installs ?? []).some((install) => install.scope === "system")) {
-            results.push({
-              name: skill.name,
-              source: skill.source.type,
-              outdated: false,
-              localChecksum: skill.checksum,
-              projects,
-            });
-            continue;
-          }
-
           if (skill.source.type !== "url" || !skill.source.url) {
             results.push({
               name: skill.name,
