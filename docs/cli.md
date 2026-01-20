@@ -134,6 +134,21 @@ Behavior:
 
 - Updates canonical store first, then refreshes agent links or copies.
 
+### skillbox remove <name>
+
+Remove a skill from the canonical store and agent installs. Use --project to remove only a project’s installs and keep the canonical copy.
+
+Examples:
+
+- skillbox remove linting
+- skillbox remove linting --project /path/to/repo
+
+Behavior:
+
+- Removes agent installs for the skill.
+- Removes the canonical skill directory unless --project is used.
+- Updates the index to forget removed installs.
+
 ### skillbox import [path]
 
 Import an existing skill directory into Skillbox index, or bulk import global skills.

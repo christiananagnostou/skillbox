@@ -44,6 +44,7 @@ skillbox convert <url> [--name <name>] [--output <dir>] [--agent]
 skillbox list [--group=category|namespace|source|project] [--json]
 skillbox status [--group=project|source] [--json]
 skillbox update [name] [--project <path>]
+skillbox remove <name> [--project <path>]
 skillbox import <path>
 skillbox meta set <name> --category foo --tag bar --namespace baz
 skillbox agent

@@ -10,6 +10,7 @@ import { registerMeta } from "./commands/meta.js";
 import { registerProject } from "./commands/project.js";
 import { registerAgent } from "./commands/agent.js";
 import { registerConfig } from "./commands/config.js";
+import { registerRemove } from "./commands/remove.js";
 
 const program = new Command();
 
@@ -25,6 +26,7 @@ registerMeta(program);
 registerProject(program);
 registerAgent(program);
 registerConfig(program);
+registerRemove(program);
 
 const run = async () => {
   const { runOnboarding } = await import("./lib/onboarding.js");
