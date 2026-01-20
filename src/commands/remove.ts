@@ -6,9 +6,49 @@ import { loadIndex, saveIndex, sortIndex } from "../lib/index.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { skillDir } from "../lib/skill-store.js";
 
+type InstallInfo = {
+  scope: string;
+  agent: string;
+  path: string;
+  projectRoot?: string;
+};
+
 async function removePaths(paths: string[]): Promise<void> {
   for (const target of paths) {
     await fs.rm(target, { recursive: true, force: true });
+  }
+}
+
+function groupInstallsByScope(installs: InstallInfo[]): Map<string, InstallInfo[]> {
+  const groups = new Map<string, InstallInfo[]>();
+
+  for (const install of installs) {
+    const key = install.scope === "project" ? `project:${install.projectRoot}` : "user";
+    const existing = groups.get(key) ?? [];
+    existing.push(install);
+    groups.set(key, existing);
+  }
+
+  return groups;
+}
+
+function printRemovedInstalls(installs: InstallInfo[]): void {
+  const groups = groupInstallsByScope(installs);
+
+  // Sort: user scope first, then projects
+  const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+    if (a === "user") return -1;
+    if (b === "user") return 1;
+    return a.localeCompare(b);
+  });
+
+  for (const key of sortedKeys) {
+    const groupInstalls = groups.get(key) ?? [];
+    const label = key === "user" ? "user" : key.replace("project:", "project: ");
+
+    for (const install of groupInstalls) {
+      printInfo(`  ✓ ${label}/${install.agent}`);
+    }
   }
 }
 
@@ -64,15 +104,22 @@ export function registerRemove(program: Command): void {
           printJson({
             ok: true,
             command: "remove",
-            data: { name, project: projectRoot, removed: removedPaths, removedCanonical },
+            data: {
+              name,
+              project: projectRoot,
+              removed: toRemove,
+              removedCanonical,
+            },
           });
           return;
         }
 
-        if (projectRoot) {
-          printInfo(`Removed ${removedPaths.length} install(s) for ${name} in ${projectRoot}.`);
-        } else {
-          printInfo(`Removed ${name} and ${removedPaths.length} install(s).`);
+        printInfo(`Skill Removal: ${name}`);
+
+        if (toRemove.length > 0) {
+          printInfo("");
+          printInfo("Removed from:");
+          printRemovedInstalls(toRemove as InstallInfo[]);
         }
       } catch (error) {
         handleCommandError(options, "remove", error);

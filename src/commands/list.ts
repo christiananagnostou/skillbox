@@ -1,102 +1,151 @@
 import type { Command } from "commander";
+import fs from "node:fs/promises";
 import type { AgentId } from "../lib/agents.js";
 import { discoverGlobalSkills } from "../lib/global-skills.js";
-import { groupNamesByKey } from "../lib/grouping.js";
 import { loadIndex } from "../lib/index.js";
-import { isJsonEnabled, printGroupList, printInfo, printJson } from "../lib/output.js";
+import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { resolveRuntime } from "../lib/runtime.js";
+import { groupAndSort, sortByName } from "../lib/source-grouping.js";
 
-type SkillWithInstalls = {
-  name: string;
-  installs?: Array<{ projectRoot?: string; scope: string }>;
+type SkillInstall = {
+  scope: string;
+  agent?: string;
+  path: string;
+  projectRoot?: string;
 };
 
-type SkillWithSource = {
+type SkillEntry = {
   name: string;
   source: { type: string };
-};
-
-type SkillWithNamespace = {
-  name: string;
-  namespace?: string;
-};
-
-type SkillWithCategories = {
-  name: string;
-  categories?: string[];
-};
-
-function groupByProject(skills: SkillWithInstalls[]): Array<{ root: string; skills: string[] }> {
-  const grouped = groupNamesByKey(
-    skills,
-    (skill) => skill.name,
-    (skill) =>
-      (skill.installs ?? [])
-        .filter((install) => install.scope === "project" && install.projectRoot)
-        .map((install) => install.projectRoot as string)
-  );
-  return grouped.map((group) => ({ root: group.key, skills: group.skills }));
-}
-
-function groupBySource(skills: SkillWithSource[]): Array<{ source: string; skills: string[] }> {
-  const grouped = groupNamesByKey(
-    skills,
-    (skill) => skill.name,
-    (skill) => [skill.source.type]
-  );
-  return grouped.map((group) => ({ source: group.key, skills: group.skills }));
-}
-
-function groupByNamespace(
-  skills: SkillWithNamespace[]
-): Array<{ namespace: string; skills: string[] }> {
-  const grouped = groupNamesByKey(
-    skills,
-    (skill) => skill.name,
-    (skill) => [skill.namespace ?? "(none)"]
-  );
-  return grouped
-    .map((group) => ({ namespace: group.key, skills: group.skills }))
-    .sort((a, b) => {
-      if (a.namespace === "(none)") return 1;
-      if (b.namespace === "(none)") return -1;
-      return a.namespace.localeCompare(b.namespace);
-    });
-}
-
-function groupByCategory(
-  skills: SkillWithCategories[]
-): Array<{ category: string; skills: string[] }> {
-  const grouped = groupNamesByKey(
-    skills,
-    (skill) => skill.name,
-    (skill) => skill.categories ?? ["(uncategorized)"]
-  );
-  return grouped
-    .map((group) => ({ category: group.key, skills: group.skills }))
-    .sort((a, b) => {
-      if (a.category === "(uncategorized)") return 1;
-      if (b.category === "(uncategorized)") return -1;
-      return a.category.localeCompare(b.category);
-    });
-}
-
-type GlobalSkillEntry = {
-  name: string;
-  source: { type: "local" };
-  installs: Array<{ scope: "user"; agent: string; path: string }>;
+  installs?: SkillInstall[];
   namespace?: string;
   categories?: string[];
   tags?: string[];
 };
 
+type SkillWithSubcommands = SkillEntry & {
+  subcommands: string[];
+};
+
+async function detectSubcommands(skillPath: string): Promise<string[]> {
+  try {
+    const entries = await fs.readdir(skillPath);
+    const subcommands: string[] = [];
+
+    for (const entry of entries) {
+      if (entry === "SKILL.md") continue;
+      if (!entry.endsWith(".md")) continue;
+
+      const name = entry.replace(/\.md$/, "");
+      subcommands.push(name);
+    }
+
+    return subcommands.sort();
+  } catch {
+    return [];
+  }
+}
+
+function getSkillPath(skill: SkillEntry): string | null {
+  if (!skill.installs || skill.installs.length === 0) return null;
+  return skill.installs[0].path;
+}
+
+async function enrichWithSubcommands(skills: SkillEntry[]): Promise<SkillWithSubcommands[]> {
+  const results: SkillWithSubcommands[] = [];
+
+  for (const skill of skills) {
+    const skillPath = getSkillPath(skill);
+    const subcommands = skillPath ? await detectSubcommands(skillPath) : [];
+    results.push({ ...skill, subcommands });
+  }
+
+  return results;
+}
+
+type ScopeGroup = {
+  scope: "global" | "project";
+  sourceGroups: Array<{
+    source: string;
+    skills: SkillWithSubcommands[];
+  }>;
+};
+
+function groupByScope(skills: SkillWithSubcommands[]): ScopeGroup[] {
+  const globalSkills: SkillWithSubcommands[] = [];
+  const projectSkills: SkillWithSubcommands[] = [];
+
+  for (const skill of skills) {
+    const hasProjectInstall = skill.installs?.some((i) => i.scope === "project");
+    const hasUserInstall = skill.installs?.some((i) => i.scope === "user");
+
+    // A skill can be in both - for now, categorize by where it's installed
+    if (hasProjectInstall) {
+      projectSkills.push(skill);
+    }
+    if (hasUserInstall || (!hasProjectInstall && !hasUserInstall)) {
+      globalSkills.push(skill);
+    }
+  }
+
+  const result: ScopeGroup[] = [];
+
+  if (globalSkills.length > 0) {
+    result.push({
+      scope: "global",
+      sourceGroups: groupBySourceType(globalSkills),
+    });
+  }
+
+  if (projectSkills.length > 0) {
+    result.push({
+      scope: "project",
+      sourceGroups: groupBySourceType(projectSkills),
+    });
+  }
+
+  return result;
+}
+
+// Sort sources: local first, then git, then url (for list command)
+const LIST_SOURCE_ORDER = ["local", "git", "url"];
+
+function groupBySourceType(
+  skills: SkillWithSubcommands[]
+): Array<{ source: string; skills: SkillWithSubcommands[] }> {
+  const grouped = groupAndSort(skills, (skill) => skill.source.type, LIST_SOURCE_ORDER, sortByName);
+
+  return grouped.map(({ key, items }) => ({ source: key, skills: items }));
+}
+
+function printScopeGroup(group: ScopeGroup): void {
+  const label = group.scope === "global" ? "Global Skills" : "Project Skills";
+  const totalCount = group.sourceGroups.reduce((sum, g) => sum + g.skills.length, 0);
+
+  printInfo(`${label} (${totalCount})`);
+
+  for (const sourceGroup of group.sourceGroups) {
+    printInfo("");
+    printInfo(`${sourceGroup.source}`);
+
+    for (const skill of sourceGroup.skills) {
+      printInfo(`  ${skill.name}`);
+
+      if (skill.subcommands.length > 0) {
+        printInfo(`    → ${skill.subcommands.join(", ")}`);
+      }
+    }
+  }
+}
+
 async function listGlobalSkills(
   existing: Array<{ name: string }>,
   agents: AgentId[]
-): Promise<GlobalSkillEntry[]> {
+): Promise<SkillEntry[]> {
   const projectRoot = process.cwd();
   const seen = new Set(existing.map((skill) => skill.name));
   const discovered = await discoverGlobalSkills(projectRoot, agents);
+
   return discovered
     .filter((skill) => !seen.has(skill.name))
     .map((skill) => ({
@@ -112,7 +161,6 @@ async function listGlobalSkills(
 export function registerList(program: Command): void {
   program
     .command("list")
-    .option("--group <group>", "Group by category, namespace, source, project")
     .option("--json", "JSON output")
     .option("--global", "List user-scope skills only")
     .option("--agents <agents>", "Comma-separated list of agents to scan")
@@ -120,65 +168,31 @@ export function registerList(program: Command): void {
       const runtime = await resolveRuntime(options);
       const index = await loadIndex();
       const globalSkills = await listGlobalSkills(index.skills, runtime.agentList);
-      const skills = [...index.skills, ...globalSkills];
-      const groupedProjects = groupByProject(skills);
-      const groupedSources = groupBySource(skills);
-      const groupedNamespaces = groupByNamespace(skills);
-      const groupedCategories = groupByCategory(skills);
+      const allSkills: SkillEntry[] = [...index.skills, ...globalSkills];
+
+      const enrichedSkills = await enrichWithSubcommands(allSkills);
 
       if (isJsonEnabled(options)) {
         printJson({
           ok: true,
           command: "list",
           data: {
-            group: options.group ?? null,
-            skills,
-            projects: options.group === "project" ? groupedProjects : undefined,
-            sources: options.group === "source" ? groupedSources : undefined,
-            namespaces: options.group === "namespace" ? groupedNamespaces : undefined,
-            categories: options.group === "category" ? groupedCategories : undefined,
+            skills: enrichedSkills,
           },
         });
         return;
       }
 
-      if (options.group === "project") {
-        printGroupList(
-          "Projects",
-          groupedProjects.map((project) => ({ key: project.root, items: project.skills }))
-        );
+      const scopeGroups = groupByScope(enrichedSkills);
+
+      if (scopeGroups.length === 0) {
+        printInfo("No skills installed.");
         return;
       }
 
-      if (options.group === "source") {
-        printGroupList(
-          "Sources",
-          groupedSources.map((source) => ({ key: source.source, items: source.skills }))
-        );
-        return;
-      }
-
-      if (options.group === "namespace") {
-        printGroupList(
-          "Namespaces",
-          groupedNamespaces.map((ns) => ({ key: ns.namespace, items: ns.skills }))
-        );
-        return;
-      }
-
-      if (options.group === "category") {
-        printGroupList(
-          "Categories",
-          groupedCategories.map((cat) => ({ key: cat.category, items: cat.skills }))
-        );
-        return;
-      }
-
-      printInfo(`Skills: ${skills.length}`);
-      for (const skill of skills) {
-        const source = skill.source.type;
-        const namespace = skill.namespace ? ` (${skill.namespace})` : "";
-        printInfo(`- ${skill.name}${namespace} [${source}]`);
+      for (let i = 0; i < scopeGroups.length; i++) {
+        if (i > 0) printInfo("");
+        printScopeGroup(scopeGroups[i]);
       }
     });
 }

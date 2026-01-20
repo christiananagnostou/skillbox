@@ -124,20 +124,32 @@ export function registerAdd(program: Command): void {
           printJson({
             ok: true,
             command: "add",
-            data: { name: skillName, url, scope, agents: installed },
+            data: {
+              name: skillName,
+              source: { type: "url", url },
+              scope,
+              installs,
+            },
           });
           return;
         }
 
-        printInfo(`Installed skill: ${skillName}`);
-        printInfo(`Source: ${url}`);
-        printInfo(`Scope: ${scope}`);
-        if (installed.length === 0) {
-          printInfo("No agent targets were updated (canonical store only).");
-        } else {
-          for (const entry of installed) {
-            printInfo(`Updated ${entry.agent}: ${entry.targets.join(", ")}`);
+        printInfo(`Skill Added: ${skillName}`);
+        printInfo("");
+        printInfo("Source: url");
+        printInfo(`  ${url}`);
+
+        if (installs.length > 0) {
+          printInfo("");
+          printInfo("Installed to:");
+          for (const install of installs) {
+            const scopeLabel =
+              install.scope === "project" ? `project:${install.projectRoot}` : "user";
+            printInfo(`  ✓ ${scopeLabel}/${install.agent}`);
           }
+        } else {
+          printInfo("");
+          printInfo("No agent targets were updated.");
         }
       } catch (error) {
         handleCommandError(options, "add", error);
