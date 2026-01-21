@@ -69,6 +69,13 @@ type ScopeGroup = {
     source: string;
     skills: SkillWithSubcommands[];
   }>;
+  projectGroups?: Array<{
+    projectRoot: string;
+    sourceGroups: Array<{
+      source: string;
+      skills: SkillWithSubcommands[];
+    }>;
+  }>;
 };
 
 function groupByScope(skills: SkillWithSubcommands[]): ScopeGroup[] {
@@ -98,9 +105,31 @@ function groupByScope(skills: SkillWithSubcommands[]): ScopeGroup[] {
   }
 
   if (projectSkills.length > 0) {
+    const projectRoots = new Map<string, SkillWithSubcommands[]>();
+
+    for (const skill of projectSkills) {
+      const roots = getProjectRoots(skill);
+      if (roots.length === 0) {
+        continue;
+      }
+      for (const root of roots) {
+        const existing = projectRoots.get(root) ?? [];
+        existing.push(skill);
+        projectRoots.set(root, existing);
+      }
+    }
+
+    const projectGroups = Array.from(projectRoots.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([projectRoot, skillsForProject]) => ({
+        projectRoot,
+        sourceGroups: groupBySourceType(skillsForProject),
+      }));
+
     result.push({
       scope: "project",
       sourceGroups: groupBySourceType(projectSkills),
+      projectGroups,
     });
   }
 
@@ -118,11 +147,39 @@ function groupBySourceType(
   return grouped.map(({ key, items }) => ({ source: key, skills: items }));
 }
 
+function getProjectRoots(skill: SkillWithSubcommands): string[] {
+  const roots = (skill.installs ?? [])
+    .filter((install) => install.scope === "project")
+    .map((install) => install.projectRoot)
+    .filter((root): root is string => Boolean(root));
+  return Array.from(new Set(roots));
+}
+
 function printScopeGroup(group: ScopeGroup): void {
   const label = group.scope === "global" ? "Global Skills" : "Project Skills";
   const totalCount = group.sourceGroups.reduce((sum, g) => sum + g.skills.length, 0);
 
   printInfo(`${label} (${totalCount})`);
+
+  if (group.scope === "project" && group.projectGroups) {
+    for (const projectGroup of group.projectGroups) {
+      printInfo("");
+      printInfo(projectGroup.projectRoot);
+
+      for (const sourceGroup of projectGroup.sourceGroups) {
+        printInfo(`  ${sourceGroup.source}`);
+
+        for (const skill of sourceGroup.skills) {
+          printInfo(`    ${skill.name}`);
+
+          if (skill.subcommands.length > 0) {
+            printInfo(`      → ${skill.subcommands.join(", ")}`);
+          }
+        }
+      }
+    }
+    return;
+  }
 
   for (const sourceGroup of group.sourceGroups) {
     printInfo("");
