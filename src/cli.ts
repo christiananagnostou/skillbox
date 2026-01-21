@@ -14,7 +14,7 @@ import { registerUpdate } from "./commands/update.js";
 
 const program = new Command();
 
-program.name("skillbox").description("Local-first, agent-agnostic skills manager").version("0.2.2");
+program.name("skillbox").description("Local-first, agent-agnostic skills manager").version("0.3.0");
 
 registerAdd(program);
 registerAgent(program);
