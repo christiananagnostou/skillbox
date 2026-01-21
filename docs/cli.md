@@ -66,7 +66,7 @@ Examples:
 Behavior:
 
 - Uses the GitHub tree API to discover skills.
-- Requires --skill or --yes when multiple skills are found.
+- Installs all discovered skills by default, or use --skill to select specific ones.
 - Downloads the full skill directory into the canonical store (not just SKILL.md).
 - Tracks repo metadata so `skillbox update` refreshes from the repo.
 - Note: GitHub unauthenticated API limits are 60 requests per hour per IP, so heavy repo usage may hit rate limits.

@@ -1,17 +1,25 @@
 import type { Command } from "commander";
-import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
-import { fetchText } from "../lib/fetcher.js";
-import { parseSkillMarkdown, inferNameFromUrl, buildMetadata } from "../lib/skill-parser.js";
 import { handleCommandError } from "../lib/command.js";
-import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
-import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
-import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
-import { buildProjectAgentPaths } from "../lib/project-paths.js";
-import { resolveRuntime, ensureProjectRegistered } from "../lib/runtime.js";
 import { loadConfig } from "../lib/config.js";
+import { fetchText } from "../lib/fetcher.js";
+import { collect } from "../lib/fs-utils.js";
+import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
+import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
+import { buildProjectAgentPaths } from "../lib/project-paths.js";
+import { ensureProjectRegistered, resolveRuntime } from "../lib/runtime.js";
+import { buildMetadata, inferNameFromUrl, parseSkillMarkdown } from "../lib/skill-parser.js";
+import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
+import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
 import { handleRepoInstall, isRepoUrl } from "./add-repo.js";
 
-export const registerAdd = (program: Command): void => {
+type InstallEntry = {
+  scope: "user" | "project";
+  agent: string;
+  path: string;
+  projectRoot?: string;
+};
+
+export function registerAdd(program: Command): void {
   program
     .command("add")
     .argument("<url>", "Skill URL or repo")
@@ -47,13 +55,13 @@ export const registerAdd = (program: Command): void => {
           throw new Error("Skill frontmatter missing name. Provide --name to continue.");
         }
 
-        const metadata = buildMetadata(parsed, { type: "url", url }, skillName);
-
         if (!parsed.description) {
           throw new Error(
             "Skill frontmatter missing description. Convert the source into a valid skill."
           );
         }
+
+        const metadata = buildMetadata(parsed, { type: "url", url }, skillName);
 
         await ensureSkillsDir();
         await writeSkillFiles(skillName, skillMarkdown, metadata);
@@ -74,12 +82,7 @@ export const registerAdd = (program: Command): void => {
         const paths = buildProjectAgentPaths(projectRoot, projectEntry);
         const config = await loadConfig();
         const installed: { agent: string; scope: string; targets: string[] }[] = [];
-        const installs = [] as Array<{
-          scope: "user" | "project";
-          agent: string;
-          path: string;
-          projectRoot?: string;
-        }>;
+        const installs: InstallEntry[] = [];
         const recordedPaths = new Set<string>();
 
         for (const agent of agentList) {
@@ -92,8 +95,8 @@ export const registerAdd = (program: Command): void => {
           const written = results
             .filter((result) => result.mode !== "skipped")
             .map((result) => result.path);
-          const warning = buildSymlinkWarning(agent, results);
-          if (warning) {
+          const warnings = buildSymlinkWarning(agent, results);
+          for (const warning of warnings) {
             printInfo(warning);
           }
           const deduped = written.filter((target) => !recordedPaths.has(target));
@@ -126,30 +129,33 @@ export const registerAdd = (program: Command): void => {
             command: "add",
             data: {
               name: skillName,
-              url,
+              source: { type: "url", url },
               scope,
-              agents: installed,
+              installs,
             },
           });
           return;
         }
 
-        printInfo(`Installed skill: ${skillName}`);
-        printInfo(`Source: ${url}`);
-        printInfo(`Scope: ${scope}`);
-        if (installed.length === 0) {
-          printInfo("No agent targets were updated (canonical store only).");
-        } else {
-          for (const entry of installed) {
-            printInfo(`Updated ${entry.agent}: ${entry.targets.join(", ")}`);
+        printInfo(`Skill Added: ${skillName}`);
+        printInfo("");
+        printInfo("Source: url");
+        printInfo(`  ${url}`);
+
+        if (installs.length > 0) {
+          printInfo("");
+          printInfo("Installed to:");
+          for (const install of installs) {
+            const scopeLabel =
+              install.scope === "project" ? `project:${install.projectRoot}` : "user";
+            printInfo(`  ✓ ${scopeLabel}/${install.agent}`);
           }
+        } else {
+          printInfo("");
+          printInfo("No agent targets were updated.");
         }
       } catch (error) {
         handleCommandError(options, "add", error);
       }
     });
-};
-
-const collect = (value: string, previous: string[] = []): string[] => {
-  return [...previous, value];
-};
+}

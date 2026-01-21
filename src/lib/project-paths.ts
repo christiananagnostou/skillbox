@@ -1,13 +1,13 @@
 import type { AgentId, AgentPathMap } from "./agents.js";
-import type { ProjectEntry } from "./types.js";
 import { agentPaths } from "./agents.js";
+import type { ProjectEntry } from "./types.js";
 
 export type ProjectAgentPathMap = Record<AgentId, AgentPathMap>;
 
-export const buildProjectAgentPaths = (
+export function buildProjectAgentPaths(
   projectRoot: string,
   project?: ProjectEntry
-): ProjectAgentPathMap => {
+): ProjectAgentPathMap {
   const defaults = agentPaths(projectRoot);
   if (!project?.agentPaths) {
     return defaults;
@@ -25,4 +25,4 @@ export const buildProjectAgentPaths = (
   }
 
   return merged;
-};
+}

@@ -10,32 +10,34 @@ export type JsonResult = {
   };
 };
 
-export const isJsonEnabled = (options: { json?: boolean }) => Boolean(options.json);
+export function isJsonEnabled(options: { json?: boolean }): boolean {
+  return Boolean(options.json);
+}
 
-export const printJson = (result: JsonResult): void => {
+export function printJson(result: JsonResult): void {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-};
+}
 
-export const printInfo = (message: string): void => {
+export function printInfo(message: string): void {
   process.stdout.write(`${message}\n`);
-};
+}
 
-export const printError = (message: string): void => {
+export function printError(message: string): void {
   process.stderr.write(`${chalk.red(message)}\n`);
-};
+}
 
-export const printList = (label: string, items: string[], indent = "- "): void => {
+export function printList(label: string, items: string[], indent = "- "): void {
   printInfo(`${label}: ${items.length}`);
   for (const item of items) {
     printInfo(`${indent}${item}`);
   }
-};
+}
 
-export const printGroupList = (
+export function printGroupList(
   label: string,
   groups: Array<{ key: string; items: string[] }>,
   itemPrefix = "  - "
-): void => {
+): void {
   printInfo(`${label}: ${groups.length}`);
   for (const group of groups) {
     printInfo(`- ${group.key}`);
@@ -43,4 +45,4 @@ export const printGroupList = (
       printInfo(`${itemPrefix}${item}`);
     }
   }
-};
+}

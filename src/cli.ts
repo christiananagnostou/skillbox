@@ -1,37 +1,37 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { registerAdd } from "./commands/add.js";
-import { registerConvert } from "./commands/convert.js";
-import { registerList } from "./commands/list.js";
-import { registerStatus } from "./commands/status.js";
-import { registerUpdate } from "./commands/update.js";
-import { registerImport } from "./commands/import.js";
-import { registerMeta } from "./commands/meta.js";
-import { registerProject } from "./commands/project.js";
 import { registerAgent } from "./commands/agent.js";
 import { registerConfig } from "./commands/config.js";
+import { registerConvert } from "./commands/convert.js";
+import { registerImport } from "./commands/import.js";
+import { registerList } from "./commands/list.js";
+import { registerMeta } from "./commands/meta.js";
+import { registerProject } from "./commands/project.js";
 import { registerRemove } from "./commands/remove.js";
+import { registerStatus } from "./commands/status.js";
+import { registerUpdate } from "./commands/update.js";
 
 const program = new Command();
 
-program.name("skillbox").description("Local-first, agent-agnostic skills manager").version("0.1.0");
+program.name("skillbox").description("Local-first, agent-agnostic skills manager").version("0.3.1");
 
 registerAdd(program);
-registerConvert(program);
-registerList(program);
-registerStatus(program);
-registerUpdate(program);
-registerImport(program);
-registerMeta(program);
-registerProject(program);
 registerAgent(program);
 registerConfig(program);
+registerConvert(program);
+registerImport(program);
+registerList(program);
+registerMeta(program);
+registerProject(program);
 registerRemove(program);
+registerStatus(program);
+registerUpdate(program);
 
-const run = async () => {
+async function run(): Promise<void> {
   const { runOnboarding } = await import("./lib/onboarding.js");
   await runOnboarding();
   program.parse();
-};
+}
 
 void run();

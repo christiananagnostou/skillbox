@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
-import { skillboxRoot } from "./paths.js";
 import path from "node:path";
+import { skillboxRoot } from "./paths.js";
 
 export type SkillboxConfig = {
   version: 1;
@@ -9,20 +9,24 @@ export type SkillboxConfig = {
   installMode: "symlink" | "copy";
 };
 
-const defaultInstallMode = (): "symlink" | "copy" => {
+function defaultInstallMode(): "symlink" | "copy" {
   return process.platform === "win32" ? "copy" : "symlink";
-};
+}
 
-const defaultConfig = (): SkillboxConfig => ({
-  version: 1,
-  defaultAgents: [],
-  defaultScope: "user",
-  installMode: defaultInstallMode(),
-});
+function defaultConfig(): SkillboxConfig {
+  return {
+    version: 1,
+    defaultAgents: [],
+    defaultScope: "user",
+    installMode: defaultInstallMode(),
+  };
+}
 
-export const configPath = (): string => path.join(skillboxRoot(), "config.json");
+export function configPath(): string {
+  return path.join(skillboxRoot(), "config.json");
+}
 
-export const loadConfig = async (): Promise<SkillboxConfig> => {
+export async function loadConfig(): Promise<SkillboxConfig> {
   try {
     const content = await fs.readFile(configPath(), "utf8");
     return JSON.parse(content) as SkillboxConfig;
@@ -32,10 +36,10 @@ export const loadConfig = async (): Promise<SkillboxConfig> => {
     }
     throw error;
   }
-};
+}
 
-export const saveConfig = async (config: SkillboxConfig): Promise<void> => {
+export async function saveConfig(config: SkillboxConfig): Promise<void> {
   await fs.mkdir(skillboxRoot(), { recursive: true });
   const json = JSON.stringify(config, null, 2);
   await fs.writeFile(configPath(), `${json}\n`, "utf8");
-};
+}

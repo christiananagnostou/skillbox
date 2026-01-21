@@ -1,46 +1,43 @@
-import readline from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
-import { allAgents, isAgentId } from "./agents.js";
-import { loadConfig, saveConfig } from "./config.js";
 import { detectAgents } from "./agent-detect.js";
+import { allAgents } from "./agents.js";
+import { loadConfig, saveConfig } from "./config.js";
+import { printInfo } from "./output.js";
 
-const formatPrompt = (detected: string[]): string => {
-  if (detected.length === 0) {
-    return `Which agents do you use? (comma-separated) [${allAgents.join(", ")}]: `;
+function printWelcome(): void {
+  printInfo("");
+  printInfo("Welcome to Skillbox");
+  printInfo("Local-first, agent-agnostic skills manager");
+  printInfo("");
+}
+
+function printDetectedAgents(agents: string[]): void {
+  if (agents.length === 0) {
+    printInfo("No agents detected. Using all supported agents:");
+    for (const agent of allAgents) {
+      printInfo(`  - ${agent}`);
+    }
+  } else {
+    printInfo("Detected agents:");
+    for (const agent of agents) {
+      printInfo(`  ✓ ${agent}`);
+    }
   }
-  return `Detected agents: ${detected.join(", ")}. Press enter to accept or edit: `;
-};
+  printInfo("");
+  printInfo("Run 'skillbox config set --add-agent <name>' to add more agents.");
+  printInfo("");
+}
 
-const promptAgents = async (): Promise<string[]> => {
-  const detected = await detectAgents();
-  const rl = readline.createInterface({ input, output });
-  const answer = await rl.question(formatPrompt(detected));
-  rl.close();
-
-  const raw = answer.trim().length > 0 ? answer : detected.join(",");
-  const selected = raw
-    .split(",")
-    .map((agent) => agent.trim())
-    .filter((agent) => agent.length > 0)
-    .filter(isAgentId);
-
-  if (selected.length > 0) {
-    return selected;
-  }
-
-  return detected.length > 0 ? detected : allAgents;
-};
-
-export const runOnboarding = async (): Promise<void> => {
+export async function runOnboarding(): Promise<void> {
   const config = await loadConfig();
   if (config.defaultAgents.length > 0) {
     return;
   }
 
-  const selected = await promptAgents();
-  const next = {
-    ...config,
-    defaultAgents: selected,
-  };
-  await saveConfig(next);
-};
+  const detected = await detectAgents();
+  const selected = detected.length > 0 ? detected : allAgents;
+
+  printWelcome();
+  printDetectedAgents(detected);
+
+  await saveConfig({ ...config, defaultAgents: selected });
+}

@@ -1,15 +1,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { skillDir } from "./skill-store.js";
 import type { AgentId, AgentPathMap } from "./agents.js";
-import type { SkillboxConfig } from "./config.js";
 import { getErrorMessage } from "./command.js";
+import type { SkillboxConfig } from "./config.js";
+import { skillDir } from "./skill-store.js";
 
-export const ensureDir = async (dir: string): Promise<void> => {
+export async function ensureDir(dir: string): Promise<void> {
   await fs.mkdir(dir, { recursive: true });
-};
+}
 
-const copyFiles = async (sourceDir: string, targetDir: string): Promise<void> => {
+async function copyFiles(sourceDir: string, targetDir: string): Promise<void> {
   const entries = await fs.readdir(sourceDir);
   for (const entry of entries) {
     const sourcePath = path.join(sourceDir, entry);
@@ -20,11 +20,28 @@ const copyFiles = async (sourceDir: string, targetDir: string): Promise<void> =>
     }
     await fs.copyFile(sourcePath, destPath);
   }
-};
+}
 
-const createSymlink = async (sourceDir: string, targetDir: string): Promise<void> => {
+async function isSymlinkTo(targetDir: string, expectedSource: string): Promise<boolean> {
+  try {
+    const stat = await fs.lstat(targetDir);
+    if (!stat.isSymbolicLink()) {
+      return false;
+    }
+    const linkTarget = await fs.readlink(targetDir);
+    return linkTarget === expectedSource;
+  } catch {
+    return false;
+  }
+}
+
+async function createSymlink(sourceDir: string, targetDir: string): Promise<"created" | "exists"> {
+  if (await isSymlinkTo(targetDir, sourceDir)) {
+    return "exists";
+  }
   await fs.symlink(sourceDir, targetDir, "dir");
-};
+  return "created";
+}
 
 export type InstallResult = {
   path: string;
@@ -32,22 +49,32 @@ export type InstallResult = {
   error?: string;
 };
 
-export const buildSymlinkWarning = (agent: string, results: InstallResult[]): string | null => {
+export function buildSymlinkWarning(agent: string, results: InstallResult[]): string[] {
   const skipped = results.filter((result) => result.mode === "skipped");
   if (skipped.length === 0) {
-    return null;
+    return [];
   }
-  const details = skipped
-    .map((result) => `${result.path}: ${result.error ?? "unknown error"}`)
-    .join("; ");
-  return `Warning: symlink failed for ${agent}. ${details}. Remove the existing target or run "skillbox config set --install-mode copy" to use file copies.`;
-};
 
-export const installSkillToTargets = async (
+  const warnings: string[] = [];
+  for (const result of skipped) {
+    const skillName = path.basename(result.path);
+    const isExists = result.error?.includes("EEXIST");
+    if (isExists) {
+      warnings.push(
+        `  ⚠ ${skillName} (${agent}): already exists at target, remove manually or use --install-mode copy`
+      );
+    } else {
+      warnings.push(`  ⚠ ${skillName} (${agent}): ${result.error ?? "unknown error"}`);
+    }
+  }
+  return warnings;
+}
+
+export async function installSkillToTargets(
   skillName: string,
   targets: string[],
   config: SkillboxConfig
-): Promise<InstallResult[]> => {
+): Promise<InstallResult[]> {
   const sourceDir = skillDir(skillName);
   const results: InstallResult[] = [];
 
@@ -57,14 +84,13 @@ export const installSkillToTargets = async (
 
     if (config.installMode === "symlink") {
       try {
-        await createSymlink(sourceDir, targetDir);
-        results.push({ path: targetDir, mode: "symlink" });
-        continue;
+        const status = await createSymlink(sourceDir, targetDir);
+        results.push({ path: targetDir, mode: status === "exists" ? "symlink" : "symlink" });
       } catch (error) {
         const message = getErrorMessage(error, "unknown error");
         results.push({ path: targetDir, mode: "skipped", error: message });
-        continue;
       }
+      continue;
     }
 
     await ensureDir(targetDir);
@@ -73,18 +99,18 @@ export const installSkillToTargets = async (
   }
 
   return results;
-};
+}
 
-export const copySkillToInstallPaths = async (
+export async function copySkillToInstallPaths(
   skillName: string,
   installPaths: string[]
-): Promise<void> => {
+): Promise<void> {
   const sourceDir = skillDir(skillName);
   for (const installPath of installPaths) {
     await ensureDir(installPath);
     await copyFiles(sourceDir, installPath);
   }
-};
+}
 
 export type SyncTarget = {
   agent: AgentId;
@@ -92,11 +118,11 @@ export type SyncTarget = {
   path: string;
 };
 
-export const buildTargets = (
+export function buildTargets(
   agent: AgentId,
   paths: AgentPathMap,
   scope: "user" | "project"
-): SyncTarget[] => {
+): SyncTarget[] {
   const list = scope === "user" ? paths.user : paths.project;
   return list.map((pathValue) => ({ agent, scope, path: pathValue }));
-};
+}

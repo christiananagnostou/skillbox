@@ -1,16 +1,7 @@
 import path from "node:path";
-import fs from "node:fs/promises";
+import { exists } from "./fs-utils.js";
 
-const exists = async (target: string): Promise<boolean> => {
-  try {
-    await fs.access(target);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-export const findProjectRoot = async (startDir: string): Promise<string> => {
+export async function findProjectRoot(startDir: string): Promise<string> {
   let current = path.resolve(startDir);
   while (true) {
     const gitDir = path.join(current, ".git");
@@ -23,4 +14,4 @@ export const findProjectRoot = async (startDir: string): Promise<string> => {
     }
     current = parent;
   }
-};
+}

@@ -1,20 +1,19 @@
-import type { RepoRef } from "../lib/github.js";
-import {
-  listRepoSkills,
-  normalizeRepoRef,
-  fetchRepoFile,
-  writeRepoSkillDirectory,
-} from "../lib/repo-skills.js";
-import { parseSkillMarkdown, buildMetadata } from "../lib/skill-parser.js";
-import { writeSkillMetadata } from "../lib/skill-store.js";
+import { getErrorMessage } from "../lib/command.js";
 import { loadConfig } from "../lib/config.js";
-import { buildProjectAgentPaths } from "../lib/project-paths.js";
-import { resolveRuntime, ensureProjectRegistered } from "../lib/runtime.js";
-import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
+import { parseRepoRef, type RepoRef } from "../lib/github.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { printInfo, printJson } from "../lib/output.js";
-import { parseRepoRef } from "../lib/github.js";
-import { getErrorMessage } from "../lib/command.js";
+import { buildProjectAgentPaths } from "../lib/project-paths.js";
+import {
+  fetchRepoFile,
+  listRepoSkills,
+  normalizeRepoRef,
+  writeRepoSkillDirectory,
+} from "../lib/repo-skills.js";
+import { ensureProjectRegistered, resolveRuntime } from "../lib/runtime.js";
+import { buildMetadata, parseSkillMarkdown } from "../lib/skill-parser.js";
+import { writeSkillMetadata } from "../lib/skill-store.js";
+import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
 
 export type RepoAddOptions = {
   global?: boolean;
@@ -31,27 +30,34 @@ type RepoInstallSummary = {
   failed: Array<{ name: string; reason: string }>;
 };
 
-const normalizeSkillSelection = (skills: string[], selections: string[]): string[] => {
+type InstallEntry = {
+  scope: "user" | "project";
+  agent: string;
+  path: string;
+  projectRoot?: string;
+};
+
+function normalizeSkillSelection(skills: string[], selections: string[]): string[] {
   if (selections.length === 0) {
     return skills;
   }
   const selectionSet = new Set(selections);
   return skills.filter((name) => selectionSet.has(name));
-};
+}
 
-const ensureRepoRef = async (input: string): Promise<RepoRef> => {
+async function ensureRepoRef(input: string): Promise<RepoRef> {
   const ref = parseRepoRef(input);
   if (!ref) {
     throw new Error("Unsupported repo URL or shorthand.");
   }
-  return await normalizeRepoRef(ref);
-};
+  return normalizeRepoRef(ref);
+}
 
-const installSkillTargets = async (
+async function installSkillTargets(
   skillName: string,
   options: RepoAddOptions,
-  installs: Array<{ scope: "user" | "project"; agent: string; path: string; projectRoot?: string }>
-) => {
+  installs: InstallEntry[]
+): Promise<void> {
   const { projectRoot, scope, agentList } = await resolveRuntime({
     global: options.global,
     agents: options.agents,
@@ -72,8 +78,8 @@ const installSkillTargets = async (
       .filter((result) => result.mode !== "skipped")
       .map((result) => result.path);
 
-    const warning = buildSymlinkWarning(agent, results);
-    if (warning) {
+    const warnings = buildSymlinkWarning(agent, results);
+    for (const warning of warnings) {
       printInfo(warning);
     }
 
@@ -90,13 +96,13 @@ const installSkillTargets = async (
       }
     }
   }
-};
+}
 
-export const isRepoUrl = (input: string): boolean => {
+export function isRepoUrl(input: string): boolean {
   return Boolean(parseRepoRef(input));
-};
+}
 
-export const handleRepoInstall = async (input: string, options: RepoAddOptions) => {
+export async function handleRepoInstall(input: string, options: RepoAddOptions): Promise<void> {
   const ref = await ensureRepoRef(input);
   const { skills } = await listRepoSkills(ref);
 
@@ -107,9 +113,11 @@ export const handleRepoInstall = async (input: string, options: RepoAddOptions) 
       printJson({ ok: true, command: "add", data: { repo: input, skills: skillNames } });
       return;
     }
-    printInfo(`Skills found: ${skillNames.length}`);
+    printInfo(`Repo Skills: ${ref.owner}/${ref.repo}`);
+    printInfo("");
+    printInfo(`Found ${skillNames.length} skill(s):`);
     for (const name of skillNames) {
-      printInfo(`- ${name}`);
+      printInfo(`  - ${name}`);
     }
     return;
   }
@@ -159,12 +167,7 @@ export const handleRepoInstall = async (input: string, options: RepoAddOptions) 
         updatedAt: metadata.updatedAt,
       });
 
-      const installs: Array<{
-        scope: "user" | "project";
-        agent: string;
-        path: string;
-        projectRoot?: string;
-      }> = [];
+      const installs: InstallEntry[] = [];
       await installSkillTargets(skill.name, options, installs);
 
       const nextIndex = upsertSkill(updated, {
@@ -190,26 +193,50 @@ export const handleRepoInstall = async (input: string, options: RepoAddOptions) 
   await saveIndex(sortIndex(index));
 
   if (options.json) {
-    printJson({ ok: true, command: "add", data: summary });
+    printJson({ ok: true, command: "add", data: { repo: `${ref.owner}/${ref.repo}`, ...summary } });
     return;
   }
 
-  if (summary.failed.length > 0) {
-    printInfo("Some skills failed to install:");
-    for (const failure of summary.failed) {
-      printInfo(`- ${failure.name}: ${failure.reason}`);
+  printInfo(`Skills Added from: ${ref.owner}/${ref.repo}`);
+  printInfo("");
+  printInfo("Source: git");
+  printInfo(`  ${ref.owner}/${ref.repo}${ref.path ? `/${ref.path}` : ""} (${ref.ref})`);
+
+  if (summary.installed.length > 0) {
+    printInfo("");
+    printInfo(`Installed (${summary.installed.length}):`);
+    for (const name of summary.installed) {
+      printInfo(`  ✓ ${name}`);
     }
   }
-  if (summary.installed.length > 0) {
-    printInfo(`Installed ${summary.installed.length} skill(s): ${summary.installed.join(", ")}`);
-  }
+
   if (summary.updated.length > 0) {
-    printInfo(`Updated ${summary.updated.length} skill(s): ${summary.updated.join(", ")}`);
+    printInfo("");
+    printInfo(`Updated (${summary.updated.length}):`);
+    for (const name of summary.updated) {
+      printInfo(`  ✓ ${name}`);
+    }
   }
+
   if (summary.skipped.length > 0) {
-    printInfo(`Skipped ${summary.skipped.length} skill(s): ${summary.skipped.join(", ")}`);
+    printInfo("");
+    printInfo(`Skipped (${summary.skipped.length}):`);
+    for (const name of summary.skipped) {
+      printInfo(`  - ${name} (missing description)`);
+    }
   }
-  if (summary.installed.length === 0 && summary.updated.length === 0) {
-    printInfo("No agent targets were updated (canonical store only).");
+
+  if (summary.failed.length > 0) {
+    printInfo("");
+    printInfo(`Failed (${summary.failed.length}):`);
+    for (const failure of summary.failed) {
+      printInfo(`  ✗ ${failure.name} (${failure.reason})`);
+    }
   }
-};
+
+  const total = summary.installed.length + summary.updated.length;
+  if (total === 0) {
+    printInfo("");
+    printInfo("No skills were added.");
+  }
+}

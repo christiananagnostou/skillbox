@@ -7,12 +7,12 @@ export type RepoRef = {
   path?: string;
 };
 
-const repoUrlRegex = /^https?:\/\/github\.com\/(.+?)\/(.+?)(?:\.git)?(?:\/)?$/i;
-const treeUrlRegex = /^https?:\/\/github\.com\/(.+?)\/(.+?)\/tree\/([^/]+)\/(.+)$/i;
+const REPO_URL_REGEX = /^https?:\/\/github\.com\/(.+?)\/(.+?)(?:\.git)?(?:\/)?$/i;
+const TREE_URL_REGEX = /^https?:\/\/github\.com\/(.+?)\/(.+?)\/tree\/([^/]+)\/(.+)$/i;
 
-export const parseRepoRef = (input: string): RepoRef | null => {
+export function parseRepoRef(input: string): RepoRef | null {
   if (input.includes("github.com") && input.includes("/tree/")) {
-    const match = input.match(treeUrlRegex);
+    const match = input.match(TREE_URL_REGEX);
     if (!match) {
       return null;
     }
@@ -33,7 +33,7 @@ export const parseRepoRef = (input: string): RepoRef | null => {
   }
 
   if (input.includes("github.com")) {
-    const match = input.match(repoUrlRegex);
+    const match = input.match(REPO_URL_REGEX);
     if (!match) {
       return null;
     }
@@ -45,13 +45,13 @@ export const parseRepoRef = (input: string): RepoRef | null => {
   }
 
   return null;
-};
+}
 
-export const buildRawUrl = (ref: RepoRef, filePath: string): string => {
+export function buildRawUrl(ref: RepoRef, filePath: string): string {
   return `https://raw.githubusercontent.com/${ref.owner}/${ref.repo}/${ref.ref}/${filePath}`;
-};
+}
 
-export const fetchJson = async <T>(url: string): Promise<T> => {
+export async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetchText(url);
   return JSON.parse(response) as T;
-};
+}

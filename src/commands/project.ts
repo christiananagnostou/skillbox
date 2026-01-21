@@ -1,17 +1,14 @@
 import type { Command } from "commander";
 import path from "node:path";
+import { handleCommandError } from "../lib/command.js";
+import { collect } from "../lib/fs-utils.js";
+import { loadIndex } from "../lib/index.js";
+import { collectProjectSkills, getProjectInstallPaths, getProjectSkills } from "../lib/installs.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { loadProjects, saveProjects, upsertProject } from "../lib/projects.js";
-import { loadIndex } from "../lib/index.js";
 import { copySkillToInstallPaths } from "../lib/sync.js";
-import { collectProjectSkills, getProjectInstallPaths, getProjectSkills } from "../lib/installs.js";
-import { handleCommandError } from "../lib/command.js";
 
-const collect = (value: string, previous: string[] = []): string[] => {
-  return [...previous, value];
-};
-
-const parseAgentPaths = (entries: string[]): Record<string, string[]> => {
+function parseAgentPaths(entries: string[]): Record<string, string[]> {
   const overrides: Record<string, string[]> = {};
   for (const entry of entries) {
     const [agent, pathValue] = entry.split("=");
@@ -22,9 +19,9 @@ const parseAgentPaths = (entries: string[]): Record<string, string[]> => {
     overrides[agent] = [...existing, pathValue];
   }
   return overrides;
-};
+}
 
-export const registerProject = (program: Command): void => {
+export function registerProject(program: Command): void {
   const project = program.command("project").description("Manage projects");
 
   project
@@ -41,15 +38,15 @@ export const registerProject = (program: Command): void => {
 
         const merged = {
           ...updated,
-          projects: updated.projects.map((project) => {
-            if (project.root !== resolved) {
-              return project;
+          projects: updated.projects.map((proj) => {
+            if (proj.root !== resolved) {
+              return proj;
             }
-            const nextPaths = project.agentPaths ? { ...project.agentPaths } : {};
+            const nextPaths = proj.agentPaths ? { ...proj.agentPaths } : {};
             for (const [agent, paths] of Object.entries(overrides)) {
               nextPaths[agent] = paths;
             }
-            return { ...project, agentPaths: nextPaths };
+            return { ...proj, agentPaths: nextPaths };
           }),
         };
 
@@ -61,8 +58,7 @@ export const registerProject = (program: Command): void => {
             command: "project add",
             data: {
               path: resolved,
-              agentPaths:
-                merged.projects.find((project) => project.root === resolved)?.agentPaths ?? {},
+              agentPaths: merged.projects.find((p) => p.root === resolved)?.agentPaths ?? {},
             },
           });
           return;
@@ -82,19 +78,13 @@ export const registerProject = (program: Command): void => {
       const skillIndex = await loadIndex();
       const projectSkills = collectProjectSkills(skillIndex.skills);
 
-      const projects = projectsIndex.projects.map((project) => ({
-        ...project,
-        skills: projectSkills.get(project.root) ?? [],
+      const projects = projectsIndex.projects.map((proj) => ({
+        ...proj,
+        skills: projectSkills.get(proj.root) ?? [],
       }));
 
       if (isJsonEnabled(options)) {
-        printJson({
-          ok: true,
-          command: "project list",
-          data: {
-            projects,
-          },
-        });
+        printJson({ ok: true, command: "project list", data: { projects } });
         return;
       }
 
@@ -117,9 +107,9 @@ export const registerProject = (program: Command): void => {
       const projectsIndex = await loadProjects();
       const skillIndex = await loadIndex();
       const resolved = path.resolve(inputPath);
-      const project = projectsIndex.projects.find((entry) => entry.root === resolved);
+      const proj = projectsIndex.projects.find((entry) => entry.root === resolved);
 
-      if (!project) {
+      if (!proj) {
         handleCommandError(
           options,
           "project inspect",
@@ -130,17 +120,13 @@ export const registerProject = (program: Command): void => {
 
       const skills = getProjectSkills(skillIndex.skills, resolved);
       const data = {
-        root: project.root,
-        agentPaths: project.agentPaths ?? {},
+        root: proj.root,
+        agentPaths: proj.agentPaths ?? {},
         skills,
       };
 
       if (isJsonEnabled(options)) {
-        printJson({
-          ok: true,
-          command: "project inspect",
-          data,
-        });
+        printJson({ ok: true, command: "project inspect", data });
         return;
       }
 
@@ -190,14 +176,11 @@ export const registerProject = (program: Command): void => {
         printJson({
           ok: true,
           command: "project sync",
-          data: {
-            root: resolved,
-            skills: Array.from(installPaths.keys()).sort(),
-          },
+          data: { root: resolved, skills: Array.from(installPaths.keys()).sort() },
         });
         return;
       }
 
       printInfo(`Synced ${installPaths.size} skill(s) for ${resolved}`);
     });
-};
+}
