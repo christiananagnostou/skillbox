@@ -39,6 +39,18 @@ export function getInstallPaths(skill: IndexedSkill, projectRoot?: string | null
     .map((install) => install.path);
 }
 
+export function recordInstallPaths(paths: string[], recorded: Set<string>): string[] {
+  const deduped: string[] = [];
+  for (const path of paths) {
+    if (recorded.has(path)) {
+      continue;
+    }
+    recorded.add(path);
+    deduped.push(path);
+  }
+  return deduped;
+}
+
 export function getProjectInstallPaths(
   skills: IndexedSkill[],
   projectRoot: string
