@@ -1,200 +1,118 @@
-# skillbox
+# Skillbox
 
-> Local-first, agent-agnostic skills manager. Track, update, and sync skills across popular AI coding agents with one CLI.
+> Local-first, agent-agnostic skills manager for AI coding agents.
 
 [![CI](https://github.com/christiananagnostou/skillbox/actions/workflows/ci.yml/badge.svg)](https://github.com/christiananagnostou/skillbox/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/skillbox.svg)](https://www.npmjs.com/package/skillbox)
 
-## Installation
-
-### npm (recommended)
+## Install
 
 ```bash
 npm install -g skillbox
 ```
 
-## Quick Start
+On first run, Skillbox auto-detects your installed agents and configures itself.
 
-Skillbox will detect installed agents on your machine. Repo and URL installs track their origin so updates stay one command away.
-
-> Tip: run `skillbox list` right after install to see existing skills.
-
-Skillbox links agent folders to the canonical store using symlinks on macOS/Linux and file copies on Windows.
+**Quick start:** Install the skillbox skill to teach your agent how to manage skills:
 
 ```bash
-# install all repo skills
-skillbox add owner/repo
-# list skills in repo
-skillbox add owner/repo --list
-# install single repo skill
-skillbox add owner/repo --skill linting
-# add skill from URL
-skillbox add https://example.com/skills/linting/SKILL.md
-# list installed skills
-skillbox list
-# check for updates
-skillbox status
-# update one skill
-skillbox update linting
+skillbox add christiananagnostou/skillbox
 ```
 
-Notes:
-- GitHub unauthenticated API limit: 60 req/hr per IP
-- use `skillbox convert` for non-skill URLs
+## Golden Workflow
 
-## Commands
-
-### Core Commands
+These three commands cover most use cases:
 
 ```bash
-# add skill from URL
-skillbox add <url> [--name <name>] [--global] [--agents ...]
-# add skill(s) from repo
-skillbox add <repo> [--list] [--skill <name>] [--global] [--agents ...]
-# convert content to skill
-skillbox convert <url> [--name <name>] [--output <dir>] [--agent]
-# list skills
-skillbox list [--group=category|namespace|source|project] [--json]
-# check for updates
-skillbox status [--group=project|source] [--json]
-# update skills
-skillbox update [name] [--project <path>]
-# remove skills
-skillbox remove <name> [--project <path>]
-# import existing skills
-skillbox import <path>
-# update metadata
-skillbox meta set <name> --category foo --tag bar --namespace baz
-# open agent REPL
-skillbox agent
+skillbox list              # see installed skills
+skillbox status            # check for updates
+skillbox update [name]     # update skills
 ```
 
-### Project Commands
+## Adding Skills
 
-```bash
-# register project
-skillbox project add <path> [--agent-path agent=path]
-# list projects
-skillbox project list
-# show project details
-skillbox project inspect <path>
-# resync project skills
-skillbox project sync <path>
-```
+| Command | Description |
+|---------|-------------|
+| `skillbox add owner/repo` | Install all skills from a GitHub repo |
+| `skillbox add owner/repo --list` | List available skills in a repo |
+| `skillbox add owner/repo --skill name` | Install a specific skill from a repo |
+| `skillbox add <url>` | Install skill from a direct URL |
+| `skillbox add <url> --name my-skill` | Install with custom name |
+
+> **Note:** GitHub unauthenticated API limit is 60 requests/hour per IP.
+
+## All Commands
+
+### Skills
+
+| Command | Description |
+|---------|-------------|
+| `skillbox list` | List installed skills |
+| `skillbox status` | Check for outdated skills |
+| `skillbox update [name]` | Update all or one skill |
+| `skillbox remove <name>` | Remove a skill |
+| `skillbox import <path>` | Import existing skill directory |
+| `skillbox import --global` | Import all skills from agent folders |
 
 ### Config
 
+| Command | Description |
+|---------|-------------|
+| `skillbox config get` | Show current config |
+| `skillbox config set --add-agent <name>` | Add an agent |
+| `skillbox config set --default-scope <scope>` | Set default scope (`user` or `project`) |
+| `skillbox config set --install-mode <mode>` | Set install mode (`symlink` or `copy`) |
+
+### Projects
+
+| Command | Description |
+|---------|-------------|
+| `skillbox project add <path>` | Register a project |
+| `skillbox project list` | List registered projects |
+| `skillbox project sync <path>` | Re-sync skills to a project |
+
+## Supported Agents
+
+| Agent | User Path | Project Path |
+|-------|-----------|--------------|
+| Claude | `~/.claude/skills/` | `.claude/skills/` |
+| Cursor | `~/.cursor/skills/` | `.cursor/skills/` |
+| Codex | `~/.codex/skills/` | `.codex/skills/` |
+| OpenCode | `~/.config/opencode/skills/` | `.opencode/skills/` |
+| Amp | `~/.config/agents/skills/` | `.agents/skills/` |
+| Antigravity | `~/.gemini/antigravity/skills/` | `.agent/skills/` |
+
+## JSON Mode
+
+All commands support `--json` for machine-readable output:
+
 ```bash
-# show config
-skillbox config get
-# set default scope
-skillbox config set --default-scope user
-# replace default agents
-skillbox config set --default-agent claude --default-agent cursor
-# add default agent
-skillbox config set --add-agent codex
-# use symlink installs
-skillbox config set --install-mode symlink
-# use file copies
-skillbox config set --install-mode copy
-```
-
-Config defaults live in `~/.config/skillbox/config.json`:
-
-- `defaultScope`: `user` (default) or `project`
-- `defaultAgents`: empty array means all agents
-- `installMode`: `symlink` (macOS/Linux) or `copy` (Windows)
-
-## Agent Mode
-
-Use `--json` for machine-readable output.
-
-```bash
-# list skills (json)
 skillbox list --json
-# status check (json)
 skillbox status --json
-# update one skill (json)
-skillbox update linting --json
+skillbox update my-skill --json
 ```
 
-### Agent Usage Snippet
+## For AI Agents
 
-```text
-Use skillbox for skill management.
+Install the skillbox skill to teach your agent how to use skillbox:
 
-Common workflow:
-1) skillbox list --json
-2) skillbox status --json
-3) skillbox update <name> --json
-
-If you need to install a new skill from a URL, run:
-# add skill from URL
-skillbox add <url> [--name <name>]
-
-If you need a skill from a repo, run:
-# list skills in repo
-skillbox add owner/repo --list
-# install single repo skill
-skillbox add owner/repo --skill <name>
-# install all repo skills
-skillbox add owner/repo
-
-Note: GitHub unauthenticated API limits are 60 requests per hour per IP, so heavy repo usage may hit rate limits.
-
-If a URL is not a valid skill, run:
-# convert content to skill
-skillbox convert <url> --agent
+```bash
+skillbox add christiananagnostou/skillbox
 ```
 
-## Skill Locations
-
-Skillbox maintains a canonical store and syncs into agent-native folders.
-
-Canonical store:
-
-- `~/.config/skillbox/skills/<name>/`
-
-Index + config:
-
-- `~/.config/skillbox/index.json`
-- `~/.config/skillbox/projects.json`
-- `~/.config/skillbox/config.json`
-
-Agent paths (default):
-
-- OpenCode: `.opencode/skills/`, `~/.config/opencode/skills/` (Claude-compatible `.claude/skills/` also supported)
-- Claude: `.claude/skills/`, `~/.claude/skills/`
-- Cursor: `.cursor/skills/`, `.claude/skills/`, `~/.cursor/skills/`, `~/.claude/skills/`
-- Codex: `$REPO_ROOT/.codex/skills/`, `~/.codex/skills/`
-- Amp: `.agents/skills/`, `~/.config/agents/skills/` (Claude-compatible `.claude/skills/` also supported)
-- Antigravity: `.agent/skills/`, `~/.gemini/antigravity/skills/`
-
-## Usage with AI Agents
-
-### Just ask the agent
-
-The simplest approach is to instruct your agent to use Skillbox:
-
-```
-Use skillbox to manage skills for this repo. Run skillbox --help for all commands.
-```
-
-### AGENTS.md / CLAUDE.md
-
-Add this to your project instructions for more consistent results:
+Or add this to your `CLAUDE.md` / `AGENTS.md`:
 
 ```markdown
-## Skills
-
-Use `skillbox` to manage skills. Run `skillbox --help` for all commands.
-
-Core workflow:
-
-1. `skillbox list --json`
-2. `skillbox status --json`
-3. `skillbox update <name> --json`
+Use `skillbox` to manage skills. Run `skillbox --help` for commands.
 ```
+
+## File Locations
+
+| Path | Purpose |
+|------|---------|
+| `~/.config/skillbox/skills/` | Canonical skill store |
+| `~/.config/skillbox/config.json` | Configuration |
+| `~/.config/skillbox/index.json` | Skill index |
 
 ## Development
 
