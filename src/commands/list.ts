@@ -158,6 +158,13 @@ async function listGlobalSkills(
     }));
 }
 
+function filterByAgents(skills: SkillEntry[], agents: string[]): SkillEntry[] {
+  const agentSet = new Set(agents);
+  return skills.filter((skill) =>
+    skill.installs?.some((install) => install.agent && agentSet.has(install.agent))
+  );
+}
+
 export function registerList(program: Command): void {
   program
     .command("list")
@@ -168,7 +175,12 @@ export function registerList(program: Command): void {
       const runtime = await resolveRuntime(options);
       const index = await loadIndex();
       const globalSkills = await listGlobalSkills(index.skills, runtime.agentList);
-      const allSkills: SkillEntry[] = [...index.skills, ...globalSkills];
+
+      // Filter indexed skills by specified agents if --agents flag is used
+      const indexedSkills = options.agents
+        ? filterByAgents(index.skills, runtime.agentList)
+        : index.skills;
+      const allSkills: SkillEntry[] = [...indexedSkills, ...globalSkills];
 
       const enrichedSkills = await enrichWithSubcommands(allSkills);
 
@@ -186,7 +198,11 @@ export function registerList(program: Command): void {
       const scopeGroups = groupByScope(enrichedSkills);
 
       if (scopeGroups.length === 0) {
-        printInfo("No skills installed.");
+        if (options.agents) {
+          printInfo(`No skills found for agent(s): ${runtime.agentList.join(", ")}`);
+        } else {
+          printInfo("No skills installed.");
+        }
         return;
       }
 
