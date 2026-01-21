@@ -43,6 +43,7 @@ skillbox add <url> --json
 
 ## Tips
 
+- Run `skillbox --help` or `skillbox <command> --help` to see all available options
 - Run `skillbox status` periodically to check for updates
 - Use `skillbox list` to see available skills and their subcommands
 - GitHub API has a 60 req/hr limit for unauthenticated requests
