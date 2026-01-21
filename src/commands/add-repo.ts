@@ -59,6 +59,7 @@ const installSkillTargets = async (
   const projectEntry = await ensureProjectRegistered(projectRoot, scope);
   const paths = buildProjectAgentPaths(projectRoot, projectEntry);
   const config = await loadConfig();
+  const recordedPaths = new Set<string>();
 
   for (const agent of agentList) {
     const map = paths[agent];
@@ -76,8 +77,10 @@ const installSkillTargets = async (
       printInfo(warning);
     }
 
-    if (written.length > 0) {
-      for (const target of written) {
+    const deduped = written.filter((target) => !recordedPaths.has(target));
+    if (deduped.length > 0) {
+      for (const target of deduped) {
+        recordedPaths.add(target);
         installs.push({
           scope,
           agent,

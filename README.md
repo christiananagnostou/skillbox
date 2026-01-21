@@ -7,8 +7,6 @@
 
 ## Installation
 
-### npm (recommended)
-
 ```bash
 npm install -g skillbox
 ```
