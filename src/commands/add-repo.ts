@@ -2,6 +2,7 @@ import { getErrorMessage } from "../lib/command.js";
 import { loadConfig } from "../lib/config.js";
 import { parseRepoRef, type RepoRef } from "../lib/github.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
+import { recordInstallPaths } from "../lib/installs.js";
 import { printInfo, printJson } from "../lib/output.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 import {
@@ -14,6 +15,7 @@ import { ensureProjectRegistered, resolveRuntime } from "../lib/runtime.js";
 import { buildMetadata, parseSkillMarkdown } from "../lib/skill-parser.js";
 import { writeSkillMetadata } from "../lib/skill-store.js";
 import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
+import type { SkillInstall } from "../lib/types.js";
 
 export type RepoAddOptions = {
   global?: boolean;
@@ -28,13 +30,6 @@ type RepoInstallSummary = {
   updated: string[];
   skipped: string[];
   failed: Array<{ name: string; reason: string }>;
-};
-
-type InstallEntry = {
-  scope: "user" | "project";
-  agent: string;
-  path: string;
-  projectRoot?: string;
 };
 
 function normalizeSkillSelection(skills: string[], selections: string[]): string[] {
@@ -56,7 +51,7 @@ async function ensureRepoRef(input: string): Promise<RepoRef> {
 async function installSkillTargets(
   skillName: string,
   options: RepoAddOptions,
-  installs: InstallEntry[]
+  installs: SkillInstall[]
 ): Promise<void> {
   const { projectRoot, scope, agentList } = await resolveRuntime({
     global: options.global,
@@ -83,10 +78,9 @@ async function installSkillTargets(
       printInfo(warning);
     }
 
-    const deduped = written.filter((target) => !recordedPaths.has(target));
+    const deduped = recordInstallPaths(written, recordedPaths);
     if (deduped.length > 0) {
       for (const target of deduped) {
-        recordedPaths.add(target);
         installs.push({
           scope,
           agent,
@@ -167,7 +161,7 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
         updatedAt: metadata.updatedAt,
       });
 
-      const installs: InstallEntry[] = [];
+      const installs: SkillInstall[] = [];
       await installSkillTargets(skill.name, options, installs);
 
       const nextIndex = upsertSkill(updated, {
