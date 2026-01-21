@@ -4,20 +4,15 @@ import { loadConfig } from "../lib/config.js";
 import { fetchText } from "../lib/fetcher.js";
 import { collect } from "../lib/fs-utils.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
+import { recordInstallPaths } from "../lib/installs.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 import { ensureProjectRegistered, resolveRuntime } from "../lib/runtime.js";
 import { buildMetadata, inferNameFromUrl, parseSkillMarkdown } from "../lib/skill-parser.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
+import type { SkillInstall } from "../lib/types.js";
 import { handleRepoInstall, isRepoUrl } from "./add-repo.js";
-
-type InstallEntry = {
-  scope: "user" | "project";
-  agent: string;
-  path: string;
-  projectRoot?: string;
-};
 
 export function registerAdd(program: Command): void {
   program
@@ -82,7 +77,8 @@ export function registerAdd(program: Command): void {
         const paths = buildProjectAgentPaths(projectRoot, projectEntry);
         const config = await loadConfig();
         const installed: { agent: string; scope: string; targets: string[] }[] = [];
-        const installs: InstallEntry[] = [];
+        const installs: SkillInstall[] = [];
+        const recordedPaths = new Set<string>();
 
         for (const agent of agentList) {
           const map = paths[agent];
@@ -98,9 +94,10 @@ export function registerAdd(program: Command): void {
           for (const warning of warnings) {
             printInfo(warning);
           }
-          if (written.length > 0) {
-            installed.push({ agent, scope, targets: written });
-            for (const target of written) {
+          const deduped = recordInstallPaths(written, recordedPaths);
+          if (deduped.length > 0) {
+            installed.push({ agent, scope, targets: deduped });
+            for (const target of deduped) {
               installs.push({
                 scope,
                 agent,
