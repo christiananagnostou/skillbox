@@ -77,8 +77,8 @@ async function installSkillTargets(
       .filter((result) => result.mode !== "skipped")
       .map((result) => result.path);
 
-    const warning = buildSymlinkWarning(agent, results);
-    if (warning) {
+    const warnings = buildSymlinkWarning(agent, results);
+    for (const warning of warnings) {
       printInfo(warning);
     }
 

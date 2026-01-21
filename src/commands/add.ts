@@ -94,8 +94,8 @@ export function registerAdd(program: Command): void {
           const written = results
             .filter((result) => result.mode !== "skipped")
             .map((result) => result.path);
-          const warning = buildSymlinkWarning(agent, results);
-          if (warning) {
+          const warnings = buildSymlinkWarning(agent, results);
+          for (const warning of warnings) {
             printInfo(warning);
           }
           if (written.length > 0) {
