@@ -22,8 +22,25 @@ async function copyFiles(sourceDir: string, targetDir: string): Promise<void> {
   }
 }
 
-async function createSymlink(sourceDir: string, targetDir: string): Promise<void> {
+async function isSymlinkTo(targetDir: string, expectedSource: string): Promise<boolean> {
+  try {
+    const stat = await fs.lstat(targetDir);
+    if (!stat.isSymbolicLink()) {
+      return false;
+    }
+    const linkTarget = await fs.readlink(targetDir);
+    return linkTarget === expectedSource;
+  } catch {
+    return false;
+  }
+}
+
+async function createSymlink(sourceDir: string, targetDir: string): Promise<"created" | "exists"> {
+  if (await isSymlinkTo(targetDir, sourceDir)) {
+    return "exists";
+  }
   await fs.symlink(sourceDir, targetDir, "dir");
+  return "created";
 }
 
 export type InstallResult = {
@@ -32,15 +49,25 @@ export type InstallResult = {
   error?: string;
 };
 
-export function buildSymlinkWarning(agent: string, results: InstallResult[]): string | null {
+export function buildSymlinkWarning(agent: string, results: InstallResult[]): string[] {
   const skipped = results.filter((result) => result.mode === "skipped");
   if (skipped.length === 0) {
-    return null;
+    return [];
   }
-  const details = skipped
-    .map((result) => `${result.path}: ${result.error ?? "unknown error"}`)
-    .join("; ");
-  return `Warning: symlink failed for ${agent}. ${details}. Remove the existing target or run "skillbox config set --install-mode copy" to use file copies.`;
+
+  const warnings: string[] = [];
+  for (const result of skipped) {
+    const skillName = path.basename(result.path);
+    const isExists = result.error?.includes("EEXIST");
+    if (isExists) {
+      warnings.push(
+        `  ⚠ ${skillName} (${agent}): already exists at target, remove manually or use --install-mode copy`
+      );
+    } else {
+      warnings.push(`  ⚠ ${skillName} (${agent}): ${result.error ?? "unknown error"}`);
+    }
+  }
+  return warnings;
 }
 
 export async function installSkillToTargets(
@@ -57,8 +84,8 @@ export async function installSkillToTargets(
 
     if (config.installMode === "symlink") {
       try {
-        await createSymlink(sourceDir, targetDir);
-        results.push({ path: targetDir, mode: "symlink" });
+        const status = await createSymlink(sourceDir, targetDir);
+        results.push({ path: targetDir, mode: status === "exists" ? "symlink" : "symlink" });
       } catch (error) {
         const message = getErrorMessage(error, "unknown error");
         results.push({ path: targetDir, mode: "skipped", error: message });
