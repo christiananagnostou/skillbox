@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import path from "node:path";
 import { handleCommandError } from "../lib/command.js";
 import { loadConfig } from "../lib/config.js";
 import { fetchText } from "../lib/fetcher.js";
@@ -85,16 +86,17 @@ export function registerAdd(program: Command): void {
           if (!map) {
             continue;
           }
-          const targets = buildTargets(agent, map, scope).map((target) => target.path);
+          const targets = buildTargets(agent, map, scope).map((target) =>
+            path.join(target.path, skillName)
+          );
           const results = await installSkillToTargets(skillName, targets, config);
-          const written = results
-            .filter((result) => result.mode !== "skipped")
-            .map((result) => result.path);
           const warnings = buildSymlinkWarning(agent, results);
           for (const warning of warnings) {
             printInfo(warning);
           }
-          const deduped = recordInstallPaths(written, recordedPaths);
+          // Record all targets, not just successfully written ones
+          // The warning tells users about symlink issues, but we still track the install intent
+          const deduped = recordInstallPaths(targets, recordedPaths);
           if (deduped.length > 0) {
             installed.push({ agent, scope, targets: deduped });
             for (const target of deduped) {

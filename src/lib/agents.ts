@@ -66,6 +66,18 @@ export type AgentPath = {
 };
 
 export function getUserPathsForAgents(projectRoot: string, agents: AgentId[]): AgentPath[] {
+  return getPathsForAgents(projectRoot, agents, "user");
+}
+
+export function getProjectPathsForAgents(projectRoot: string, agents: AgentId[]): AgentPath[] {
+  return getPathsForAgents(projectRoot, agents, "project");
+}
+
+function getPathsForAgents(
+  projectRoot: string,
+  agents: AgentId[],
+  scope: "user" | "project"
+): AgentPath[] {
   const paths = agentPaths(projectRoot);
   const seen = new Set<string>();
   const results: AgentPath[] = [];
@@ -75,12 +87,12 @@ export function getUserPathsForAgents(projectRoot: string, agents: AgentId[]): A
     if (!agentEntry) {
       continue;
     }
-    for (const userPath of agentEntry.user) {
-      if (seen.has(userPath)) {
+    for (const pathValue of agentEntry[scope]) {
+      if (seen.has(pathValue)) {
         continue;
       }
-      seen.add(userPath);
-      results.push({ agent, path: userPath });
+      seen.add(pathValue);
+      results.push({ agent, path: pathValue });
     }
   }
 

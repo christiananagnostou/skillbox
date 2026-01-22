@@ -1,3 +1,4 @@
+import path from "node:path";
 import { getErrorMessage } from "../lib/command.js";
 import { loadConfig } from "../lib/config.js";
 import { parseRepoRef, type RepoRef } from "../lib/github.js";
@@ -67,27 +68,26 @@ async function installSkillTargets(
     if (!map) {
       continue;
     }
-    const targets = buildTargets(agent, map, scope).map((target) => target.path);
+    const targets = buildTargets(agent, map, scope).map((target) =>
+      path.join(target.path, skillName)
+    );
     const results = await installSkillToTargets(skillName, targets, config);
-    const written = results
-      .filter((result) => result.mode !== "skipped")
-      .map((result) => result.path);
 
     const warnings = buildSymlinkWarning(agent, results);
     for (const warning of warnings) {
       printInfo(warning);
     }
 
-    const deduped = recordInstallPaths(written, recordedPaths);
-    if (deduped.length > 0) {
-      for (const target of deduped) {
-        installs.push({
-          scope,
-          agent,
-          path: target,
-          projectRoot: scope === "project" ? projectRoot : undefined,
-        });
-      }
+    // Record all targets, not just successfully written ones
+    // The warning tells users about symlink issues, but we still track the install intent
+    const deduped = recordInstallPaths(targets, recordedPaths);
+    for (const target of deduped) {
+      installs.push({
+        scope,
+        agent,
+        path: target,
+        projectRoot: scope === "project" ? projectRoot : undefined,
+      });
     }
   }
 }

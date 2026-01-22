@@ -67,8 +67,9 @@ skillbox update [name]     # update skills
 
 | Command | Description |
 |---------|-------------|
-| `skillbox project add <path>` | Register a project |
+| `skillbox project add <path>` | Register a project and auto-import skills from `skills/` and agent directories |
 | `skillbox project list` | List registered projects |
+| `skillbox project inspect <path>` | Show project details and skills |
 | `skillbox project sync <path>` | Re-sync skills to a project |
 
 ## Supported Agents

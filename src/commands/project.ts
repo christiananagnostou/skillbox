@@ -1,12 +1,65 @@
 import type { Command } from "commander";
 import path from "node:path";
+import { allAgents, getProjectPathsForAgents } from "../lib/agents.js";
 import { handleCommandError } from "../lib/command.js";
+import { discoverSkills } from "../lib/discovery.js";
 import { collect } from "../lib/fs-utils.js";
-import { loadIndex } from "../lib/index.js";
+import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { collectProjectSkills, getProjectInstallPaths, getProjectSkills } from "../lib/installs.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { loadProjects, saveProjects, upsertProject } from "../lib/projects.js";
+import { importSkillFromDir } from "../lib/skill-store.js";
 import { copySkillToInstallPaths } from "../lib/sync.js";
+
+function getProjectSkillPaths(projectRoot: string): string[] {
+  const agentPaths = getProjectPathsForAgents(projectRoot, allAgents);
+  const seen = new Set<string>();
+
+  // Add generic skills/ directory
+  seen.add(path.join(projectRoot, "skills"));
+
+  // Add all agent-specific project paths
+  for (const { path: agentPath } of agentPaths) {
+    seen.add(agentPath);
+  }
+
+  return Array.from(seen);
+}
+
+async function discoverProjectSkills(projectRoot: string): Promise<string[]> {
+  const skillPaths = getProjectSkillPaths(projectRoot);
+  const discovered = await discoverSkills(skillPaths);
+
+  if (discovered.length === 0) {
+    return [];
+  }
+
+  const index = await loadIndex();
+  const imported: string[] = [];
+
+  for (const skill of discovered) {
+    const data = await importSkillFromDir(skill.skillFile);
+    if (!data) {
+      continue;
+    }
+
+    const updated = upsertSkill(index, {
+      name: data.name,
+      source: { type: "local" },
+      checksum: data.checksum,
+      updatedAt: data.updatedAt,
+      installs: [{ scope: "project", agent: "claude", path: skill.skillDir, projectRoot }],
+    });
+    index.skills = updated.skills;
+    imported.push(data.name);
+  }
+
+  if (imported.length > 0) {
+    await saveIndex(sortIndex(index));
+  }
+
+  return imported;
+}
 
 function parseAgentPaths(entries: string[]): Record<string, string[]> {
   const overrides: Record<string, string[]> = {};
@@ -26,6 +79,7 @@ export function registerProject(program: Command): void {
 
   project
     .command("add")
+    .description("Register a project and import skills from its skills/ directory")
     .argument("<path>", "Project path")
     .option("--agent-path <agentPath>", "Agent path override (agent=path)", collect)
     .option("--json", "JSON output")
@@ -52,6 +106,8 @@ export function registerProject(program: Command): void {
 
         await saveProjects(merged);
 
+        const importedSkills = await discoverProjectSkills(resolved);
+
         if (isJsonEnabled(options)) {
           printJson({
             ok: true,
@@ -59,12 +115,16 @@ export function registerProject(program: Command): void {
             data: {
               path: resolved,
               agentPaths: merged.projects.find((p) => p.root === resolved)?.agentPaths ?? {},
+              skills: importedSkills,
             },
           });
           return;
         }
 
         printInfo(`Project registered: ${resolved}`);
+        if (importedSkills.length > 0) {
+          printInfo(`Discovered ${importedSkills.length} skill(s): ${importedSkills.join(", ")}`);
+        }
       } catch (error) {
         handleCommandError(options, "project add", error);
       }

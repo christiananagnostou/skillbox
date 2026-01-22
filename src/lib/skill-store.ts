@@ -2,7 +2,14 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { skillboxSkillsDir } from "./paths.js";
+import { buildMetadata, parseSkillMarkdown } from "./skill-parser.js";
 import type { SkillMetadata } from "./types.js";
+
+export type ImportedSkillData = {
+  name: string;
+  checksum: string;
+  updatedAt: string;
+};
 
 export async function ensureSkillsDir(): Promise<void> {
   await fs.mkdir(skillboxSkillsDir(), { recursive: true });
@@ -44,4 +51,28 @@ export async function writeSkillMetadata(name: string, metadata: SkillMetadata):
 
 export function hashContent(content: string): string {
   return crypto.createHash("sha256").update(content).digest("hex");
+}
+
+/**
+ * Import a skill from a local directory. Reads the markdown, parses it,
+ * and writes to the skill store. Returns the data needed for index updates,
+ * or null if the skill is invalid (missing description).
+ */
+export async function importSkillFromDir(skillFile: string): Promise<ImportedSkillData | null> {
+  const markdown = await fs.readFile(skillFile, "utf8");
+  const parsed = parseSkillMarkdown(markdown);
+
+  if (!parsed.description) {
+    return null;
+  }
+
+  const metadata = buildMetadata(parsed, { type: "local" });
+  await ensureSkillsDir();
+  await writeSkillFiles(metadata.name, markdown, metadata);
+
+  return {
+    name: metadata.name,
+    checksum: parsed.checksum,
+    updatedAt: metadata.updatedAt,
+  };
 }
