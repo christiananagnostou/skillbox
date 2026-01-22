@@ -78,9 +78,8 @@ export async function installSkillToTargets(
   const sourceDir = skillDir(skillName);
   const results: InstallResult[] = [];
 
-  for (const targetRoot of targets) {
-    const targetDir = path.join(targetRoot, skillName);
-    await ensureDir(targetRoot);
+  for (const targetDir of targets) {
+    await ensureDir(path.dirname(targetDir));
 
     if (config.installMode === "symlink") {
       try {
