@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import path from "node:path";
-import { agentPaths, allAgents } from "../lib/agents.js";
+import { allAgents, getProjectPathsForAgents } from "../lib/agents.js";
 import { handleCommandError } from "../lib/command.js";
 import { discoverSkills } from "../lib/discovery.js";
 import { collect } from "../lib/fs-utils.js";
@@ -12,17 +12,15 @@ import { importSkillFromDir } from "../lib/skill-store.js";
 import { copySkillToInstallPaths } from "../lib/sync.js";
 
 function getProjectSkillPaths(projectRoot: string): string[] {
-  const paths = agentPaths(projectRoot);
+  const agentPaths = getProjectPathsForAgents(projectRoot, allAgents);
   const seen = new Set<string>();
 
   // Add generic skills/ directory
   seen.add(path.join(projectRoot, "skills"));
 
   // Add all agent-specific project paths
-  for (const agent of allAgents) {
-    for (const agentPath of paths[agent].project) {
-      seen.add(agentPath);
-    }
+  for (const { path: agentPath } of agentPaths) {
+    seen.add(agentPath);
   }
 
   return Array.from(seen);
