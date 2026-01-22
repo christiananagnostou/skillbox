@@ -1,5 +1,7 @@
+import chalk from "chalk";
 import type { Command } from "commander";
 import fs from "node:fs/promises";
+import terminalLink from "terminal-link";
 import type { AgentId } from "../lib/agents.js";
 import { discoverGlobalSkills } from "../lib/global-skills.js";
 import { loadIndex } from "../lib/index.js";
@@ -16,12 +18,37 @@ type SkillInstall = {
 
 type SkillEntry = {
   name: string;
-  source: { type: string };
+  source: { type: string; url?: string; repo?: string; path?: string };
   installs?: SkillInstall[];
   namespace?: string;
   categories?: string[];
   tags?: string[];
 };
+
+function getSkillUrl(skill: SkillEntry): string | undefined {
+  if (skill.source.type === "url" && skill.source.url) {
+    return skill.source.url;
+  }
+  if (skill.source.type === "git" && skill.source.repo) {
+    const repo = skill.source.repo;
+    // If already a full URL, use it directly
+    if (repo.startsWith("http://") || repo.startsWith("https://")) {
+      return repo;
+    }
+    // Convert shorthand (user/repo) to full GitHub URL
+    return `https://github.com/${repo}`;
+  }
+  return undefined;
+}
+
+function linkSkillName(skill: SkillEntry): string {
+  const url = getSkillUrl(skill);
+  if (url && terminalLink.isSupported) {
+    const linkIcon = terminalLink("‹↗›", url);
+    return `${skill.name} ${chalk.dim(linkIcon)}`;
+  }
+  return skill.name;
+}
 
 type SkillWithSubcommands = SkillEntry & {
   subcommands: string[];
@@ -170,7 +197,7 @@ function printScopeGroup(group: ScopeGroup): void {
         printInfo(`  ${sourceGroup.source}`);
 
         for (const skill of sourceGroup.skills) {
-          printInfo(`    ${skill.name}`);
+          printInfo(`    ${linkSkillName(skill)}`);
 
           if (skill.subcommands.length > 0) {
             printInfo(`      → ${skill.subcommands.join(", ")}`);
@@ -186,7 +213,7 @@ function printScopeGroup(group: ScopeGroup): void {
     printInfo(`${sourceGroup.source}`);
 
     for (const skill of sourceGroup.skills) {
-      printInfo(`  ${skill.name}`);
+      printInfo(`  ${linkSkillName(skill)}`);
 
       if (skill.subcommands.length > 0) {
         printInfo(`    → ${skill.subcommands.join(", ")}`);
