@@ -5,29 +5,20 @@ const GITHUB_HOSTS = ["api.github.com", "raw.githubusercontent.com"];
 let cachedToken: string | null | undefined;
 
 function getGitHubToken(): string | null {
-  if (cachedToken !== undefined) {
-    return cachedToken;
-  }
+  if (cachedToken !== undefined) return cachedToken;
 
-  // Check environment variables first
+  // Check environment variables first, then fall back to gh CLI
   const envToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   if (envToken) {
     cachedToken = envToken;
-    return cachedToken;
+  } else {
+    try {
+      cachedToken = execSync("gh auth token", { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }).trim() || null;
+    } catch {
+      cachedToken = null;
+    }
   }
-
-  // Fall back to gh CLI
-  try {
-    const token = execSync("gh auth token", {
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-    }).trim();
-    cachedToken = token || null;
-    return cachedToken;
-  } catch {
-    cachedToken = null;
-    return null;
-  }
+  return cachedToken;
 }
 
 function isGitHubUrl(url: string): boolean {
