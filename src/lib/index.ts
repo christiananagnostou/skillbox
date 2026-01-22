@@ -33,8 +33,34 @@ export function upsertSkill(index: SkillIndex, skill: SkillIndex["skills"][numbe
     next.skills.push(skill);
     return next;
   }
-  next.skills[existingIndex] = { ...next.skills[existingIndex], ...skill };
+
+  const existing = next.skills[existingIndex];
+  const mergedInstalls = mergeInstalls(existing.installs, skill.installs);
+
+  next.skills[existingIndex] = { ...existing, ...skill, installs: mergedInstalls };
   return next;
+}
+
+function mergeInstalls(
+  existing: SkillIndex["skills"][number]["installs"],
+  incoming: SkillIndex["skills"][number]["installs"]
+): SkillIndex["skills"][number]["installs"] {
+  if (!existing && !incoming) return undefined;
+  if (!existing) return incoming;
+  if (!incoming) return existing;
+
+  // Dedupe by scope + agent + projectRoot combination
+  const seen = new Set<string>();
+  const merged: NonNullable<SkillIndex["skills"][number]["installs"]> = [];
+
+  for (const install of [...existing, ...incoming]) {
+    const key = `${install.scope}:${install.agent}:${install.projectRoot ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(install);
+  }
+
+  return merged;
 }
 
 export function sortIndex(index: SkillIndex): SkillIndex {
