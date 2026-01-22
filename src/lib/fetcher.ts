@@ -13,7 +13,9 @@ function getGitHubToken(): string | null {
     cachedToken = envToken;
   } else {
     try {
-      cachedToken = execSync("gh auth token", { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }).trim() || null;
+      cachedToken =
+        execSync("gh auth token", { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }).trim() ||
+        null;
     } catch {
       cachedToken = null;
     }
