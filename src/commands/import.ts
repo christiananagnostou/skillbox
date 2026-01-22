@@ -1,5 +1,4 @@
 import type { Command } from "commander";
-import fs from "node:fs/promises";
 import path from "node:path";
 import type { AgentId } from "../lib/agents.js";
 import { getUserPathsForAgents } from "../lib/agents.js";
@@ -8,8 +7,7 @@ import { discoverSkills } from "../lib/discovery.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { resolveRuntime } from "../lib/runtime.js";
-import { buildMetadata, parseSkillMarkdown } from "../lib/skill-parser.js";
-import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
+import { importSkillFromDir } from "../lib/skill-store.js";
 
 type GlobalImportSummary = {
   imported: string[];
@@ -53,27 +51,21 @@ async function importGlobalSkills(agents: AgentId[]): Promise<GlobalImportSummar
       continue;
     }
 
-    const markdown = await fs.readFile(skill.skillFile, "utf8");
-    const parsed = parseSkillMarkdown(markdown);
-
-    if (!parsed.description) {
+    const data = await importSkillFromDir(skill.skillFile);
+    if (!data) {
       skipped.add(skill.name);
       continue;
     }
 
-    const metadata = buildMetadata(parsed, { type: "local" });
-    await ensureSkillsDir();
-    await writeSkillFiles(metadata.name, markdown, metadata);
-
     const next = upsertSkill(index, {
-      name: metadata.name,
+      name: data.name,
       source: { type: "local" },
-      checksum: parsed.checksum,
-      updatedAt: metadata.updatedAt,
+      checksum: data.checksum,
+      updatedAt: data.updatedAt,
       installs: [{ scope: "user", agent: skill.agent, path: skill.skillDir }],
     });
     index.skills = next.skills;
-    imported.add(metadata.name);
+    imported.add(data.name);
   }
 
   await saveIndex(sortIndex(index));
@@ -110,33 +102,27 @@ export function registerImport(program: Command): void {
 
         const resolved = path.resolve(inputPath);
         const skillPath = path.join(resolved, "SKILL.md");
-        const markdown = await fs.readFile(skillPath, "utf8");
-        const parsed = parseSkillMarkdown(markdown);
 
-        if (!parsed.description) {
+        const data = await importSkillFromDir(skillPath);
+        if (!data) {
           throw new Error("Skill frontmatter missing description.");
         }
 
-        const metadata = buildMetadata(parsed, { type: "local" });
-
-        await ensureSkillsDir();
-        await writeSkillFiles(metadata.name, markdown, metadata);
-
         const index = await loadIndex();
         const updated = upsertSkill(index, {
-          name: metadata.name,
+          name: data.name,
           source: { type: "local" },
-          checksum: parsed.checksum,
-          updatedAt: metadata.updatedAt,
+          checksum: data.checksum,
+          updatedAt: data.updatedAt,
         });
         await saveIndex(sortIndex(updated));
 
         if (isJsonEnabled(options)) {
-          printJson({ ok: true, command: "import", data: { name: metadata.name, path: resolved } });
+          printJson({ ok: true, command: "import", data: { name: data.name, path: resolved } });
           return;
         }
 
-        printInfo(`Imported skill: ${metadata.name}`);
+        printInfo(`Imported skill: ${data.name}`);
       } catch (error) {
         handleCommandError(options, "import", error);
       }
