@@ -35,7 +35,24 @@ npm run format:check
 
 ### Tests
 
-TODO: Add test runner and single-test commands
+```bash
+npm test              # Run all tests
+npm run test:watch    # Watch mode
+npm run test:coverage # With coverage report
+npm run test:ci       # CI mode with JUnit output
+```
+
+Run a single test file:
+
+```bash
+npx vitest run tests/integration/add.test.ts
+```
+
+Run tests matching a pattern:
+
+```bash
+npx vitest run -t "config"
+```
 
 ## Code Style Guidelines
 
