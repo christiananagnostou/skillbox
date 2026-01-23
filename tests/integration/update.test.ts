@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { runCli, runCliJson, assertJsonResponse } from "../helpers/cli.js";
+import { runCli, runCliJson } from "../helpers/cli.js";
 import { testEnv } from "../setup.js";
 import { VALID_SKILL_MARKDOWN, TEST_URLS } from "../helpers/fixtures.js";
 import fs from "node:fs/promises";
