@@ -67,13 +67,13 @@ export class TestEnvironment {
 
   async cleanup(): Promise<void> {
     // Restore environment
-    Object.entries(this.originalEnv).forEach(([key, value]) => {
+    for (const [key, value] of Object.entries(this.originalEnv)) {
       if (value === undefined) {
         delete process.env[key];
       } else {
         process.env[key] = value;
       }
-    });
+    }
 
     // Remove test directory
     if (this.testRoot) {
@@ -85,13 +85,19 @@ export class TestEnvironment {
     // Clear skills directory
     const skillEntries = await fs.readdir(this.skillsDir).catch(() => []);
     for (const entry of skillEntries) {
-      await fs.rm(path.join(this.skillsDir, entry), { recursive: true, force: true });
+      await fs.rm(path.join(this.skillsDir, entry), {
+        recursive: true,
+        force: true,
+      });
     }
 
     // Clear agent skills directory
     const agentEntries = await fs.readdir(this.agentSkillsDir).catch(() => []);
     for (const entry of agentEntries) {
-      await fs.rm(path.join(this.agentSkillsDir, entry), { recursive: true, force: true });
+      await fs.rm(path.join(this.agentSkillsDir, entry), {
+        recursive: true,
+        force: true,
+      });
     }
 
     // Reset index
@@ -142,5 +148,76 @@ export class TestEnvironment {
   async readJson<T>(filePath: string): Promise<T> {
     const content = await fs.readFile(filePath, "utf-8");
     return JSON.parse(content) as T;
+  }
+
+  async installLocalSkill(
+    name: string,
+    skillContent: string,
+    options: {
+      description?: string;
+      subcommands?: Record<string, string>;
+    } = {}
+  ): Promise<string> {
+    const { description = `A test skill: ${name}`, subcommands } = options;
+    const skillDir = path.join(this.skillsDir, name);
+    const checksum = `test-checksum-${name}`;
+    const updatedAt = new Date().toISOString();
+
+    await fs.mkdir(skillDir, { recursive: true });
+    await fs.writeFile(path.join(skillDir, "SKILL.md"), skillContent);
+
+    if (subcommands) {
+      for (const [subName, content] of Object.entries(subcommands)) {
+        await fs.writeFile(path.join(skillDir, `${subName}.md`), content);
+      }
+    }
+
+    await fs.writeFile(
+      path.join(skillDir, "skill.json"),
+      JSON.stringify({
+        name,
+        version: "1.0.0",
+        description,
+        entry: "SKILL.md",
+        source: { type: "local" },
+        checksum,
+        updatedAt,
+      })
+    );
+
+    const indexPath = path.join(this.configDir, "index.json");
+    const index = await this.readJson<{ version: number; skills: unknown[] }>(indexPath);
+    index.skills.push({
+      name,
+      source: { type: "local" },
+      checksum,
+      updatedAt,
+      installs: [
+        {
+          scope: "user",
+          agent: "claude",
+          path: path.join(this.agentSkillsDir, name),
+        },
+      ],
+    });
+    await fs.writeFile(indexPath, JSON.stringify(index, null, 2));
+
+    await fs.symlink(skillDir, path.join(this.agentSkillsDir, name));
+
+    return skillDir;
+  }
+
+  async createUntrackedSkill(name: string, content: string): Promise<string> {
+    const skillDir = path.join(this.agentSkillsDir, name);
+    await fs.mkdir(skillDir, { recursive: true });
+    await fs.writeFile(path.join(skillDir, "SKILL.md"), content);
+    return skillDir;
+  }
+
+  async createExternalSkill(name: string, content: string): Promise<string> {
+    const skillDir = path.join(this.testRoot, name);
+    await fs.mkdir(skillDir, { recursive: true });
+    await fs.writeFile(path.join(skillDir, "SKILL.md"), content);
+    return skillDir;
   }
 }

@@ -1,17 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { runCli, runCliJson } from "../helpers/cli.js";
-import { testEnv } from "../setup.js";
 import { VALID_SKILL_MARKDOWN } from "../helpers/fixtures.js";
-import fs from "node:fs/promises";
-import path from "node:path";
+import { testEnv } from "../setup.js";
+
+const PROJECT_SKILL = `---
+name: my-project-skill
+description: A project-specific skill
+---
+Content.`;
 
 describe("E2E Workflows", () => {
   describe("complete local skill lifecycle", () => {
-    it("import → list → remove", async () => {
-      // Create skill to import
-      const skillPath = path.join(testEnv.testRoot, "lifecycle-skill");
-      await fs.mkdir(skillPath, { recursive: true });
-      await fs.writeFile(path.join(skillPath, "SKILL.md"), VALID_SKILL_MARKDOWN);
+    it("import -> list -> remove", async () => {
+      const skillPath = await testEnv.createExternalSkill("lifecycle-skill", VALID_SKILL_MARKDOWN);
 
       // Import skill
       const importResult = await runCli(["import", skillPath]);
@@ -38,18 +39,8 @@ describe("E2E Workflows", () => {
   });
 
   describe("project workflow", () => {
-    it("register → add skills → list", async () => {
-      // Create project with skill directory
-      const skillDir = path.join(testEnv.projectDir, "skills", "my-project-skill");
-      await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(
-        path.join(skillDir, "SKILL.md"),
-        `---
-name: my-project-skill
-description: A project-specific skill
----
-Content.`
-      );
+    it("register -> add skills -> list", async () => {
+      await testEnv.createProjectSkill("my-project-skill", PROJECT_SKILL);
 
       // Register project (auto-discovers skill)
       const addResult = await runCliJson<{
@@ -112,18 +103,14 @@ Content.`
   });
 
   describe("global import workflow", () => {
-    it("discovers and imports untracked skills", async () => {
-      // Create untracked skill in agent folder
-      const untrackedPath = path.join(testEnv.agentSkillsDir, "untracked-workflow-skill");
-      await fs.mkdir(untrackedPath, { recursive: true });
-      await fs.writeFile(
-        path.join(untrackedPath, "SKILL.md"),
-        `---
+    const UNTRACKED_SKILL = `---
 name: untracked-workflow-skill
 description: An untracked skill
 ---
-Content.`
-      );
+Content.`;
+
+    it("discovers and imports untracked skills", async () => {
+      await testEnv.createUntrackedSkill("untracked-workflow-skill", UNTRACKED_SKILL);
 
       // Import global
       const importResult = await runCliJson<{

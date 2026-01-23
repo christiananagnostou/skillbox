@@ -1,19 +1,14 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { runCli, runCliJson, assertJsonResponse } from "../helpers/cli.js";
-import { testEnv } from "../setup.js";
 import { VALID_SKILL_MARKDOWN, SKILL_MISSING_DESCRIPTION } from "../helpers/fixtures.js";
-import fs from "node:fs/promises";
-import path from "node:path";
+import { testEnv } from "../setup.js";
 
 describe("import command", () => {
   describe("from path", () => {
     let skillPath: string;
 
     beforeEach(async () => {
-      // Create a skill directory to import
-      skillPath = path.join(testEnv.testRoot, "import-test-skill");
-      await fs.mkdir(skillPath, { recursive: true });
-      await fs.writeFile(path.join(skillPath, "SKILL.md"), VALID_SKILL_MARKDOWN);
+      skillPath = await testEnv.createExternalSkill("import-test-skill", VALID_SKILL_MARKDOWN);
     });
 
     it("imports skill from directory", async () => {
@@ -42,9 +37,10 @@ describe("import command", () => {
     });
 
     it("shows error for skill missing description", async () => {
-      const invalidPath = path.join(testEnv.testRoot, "invalid-skill");
-      await fs.mkdir(invalidPath, { recursive: true });
-      await fs.writeFile(path.join(invalidPath, "SKILL.md"), SKILL_MISSING_DESCRIPTION);
+      const invalidPath = await testEnv.createExternalSkill(
+        "invalid-skill",
+        SKILL_MISSING_DESCRIPTION
+      );
 
       const result = await runCli(["import", invalidPath]);
 
@@ -59,18 +55,14 @@ describe("import command", () => {
   });
 
   describe("--global flag", () => {
-    beforeEach(async () => {
-      // Create an untracked skill directly in agent folder
-      const untrackedPath = path.join(testEnv.agentSkillsDir, "untracked-skill");
-      await fs.mkdir(untrackedPath, { recursive: true });
-      await fs.writeFile(
-        path.join(untrackedPath, "SKILL.md"),
-        `---
+    const UNTRACKED_SKILL = `---
 name: untracked-skill
 description: An untracked skill for testing
 ---
-Content.`
-      );
+Content.`;
+
+    beforeEach(async () => {
+      await testEnv.createUntrackedSkill("untracked-skill", UNTRACKED_SKILL);
     });
 
     it("discovers and imports untracked skills", async () => {
@@ -100,18 +92,14 @@ Content.`
   });
 
   describe("with --agents flag", () => {
-    beforeEach(async () => {
-      // Create untracked skill in claude folder
-      const untrackedPath = path.join(testEnv.agentSkillsDir, "agent-specific-skill");
-      await fs.mkdir(untrackedPath, { recursive: true });
-      await fs.writeFile(
-        path.join(untrackedPath, "SKILL.md"),
-        `---
+    const AGENT_SKILL = `---
 name: agent-specific-skill
 description: Agent-specific skill
 ---
-Content.`
-      );
+Content.`;
+
+    beforeEach(async () => {
+      await testEnv.createUntrackedSkill("agent-specific-skill", AGENT_SKILL);
     });
 
     it("scans only specified agent paths", async () => {

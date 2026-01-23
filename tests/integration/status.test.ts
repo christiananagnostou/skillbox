@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { runCli, runCliJson, assertJsonResponse } from "../helpers/cli.js";
-import { testEnv } from "../setup.js";
 import { VALID_SKILL_MARKDOWN } from "../helpers/fixtures.js";
-import fs from "node:fs/promises";
-import path from "node:path";
+import { testEnv } from "../setup.js";
 
 describe("status command", () => {
   describe("with no skills", () => {
@@ -36,49 +34,9 @@ describe("status command", () => {
 
   describe("with local skills", () => {
     beforeEach(async () => {
-      // Create a local skill (avoids network dependency)
-      const skillDir = path.join(testEnv.skillsDir, "local-status-skill");
-      await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(path.join(skillDir, "SKILL.md"), VALID_SKILL_MARKDOWN);
-      await fs.writeFile(
-        path.join(skillDir, "skill.json"),
-        JSON.stringify({
-          name: "local-status-skill",
-          version: "1.0.0",
-          description: "A local skill for status testing",
-          entry: "SKILL.md",
-          source: { type: "local" },
-          checksum: "abc123",
-          updatedAt: new Date().toISOString(),
-        })
-      );
-
-      // Add to index
-      const indexPath = path.join(testEnv.configDir, "index.json");
-      await fs.writeFile(
-        indexPath,
-        JSON.stringify({
-          version: 1,
-          skills: [
-            {
-              name: "local-status-skill",
-              source: { type: "local" },
-              checksum: "abc123",
-              updatedAt: new Date().toISOString(),
-              installs: [
-                {
-                  scope: "user",
-                  agent: "claude",
-                  path: path.join(testEnv.agentSkillsDir, "local-status-skill"),
-                },
-              ],
-            },
-          ],
-        })
-      );
-
-      // Create symlink
-      await fs.symlink(skillDir, path.join(testEnv.agentSkillsDir, "local-status-skill"));
+      await testEnv.installLocalSkill("local-status-skill", VALID_SKILL_MARKDOWN, {
+        description: "A local skill for status testing",
+      });
     });
 
     it("shows skill in status", async () => {

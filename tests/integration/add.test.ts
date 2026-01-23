@@ -1,8 +1,8 @@
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { runCli, runCliJson, assertJsonResponse } from "../helpers/cli.js";
-import { testEnv } from "../setup.js";
 import { TEST_REPOS, TEST_URLS } from "../helpers/fixtures.js";
-import path from "node:path";
+import { testEnv } from "../setup.js";
 
 describe("add command", () => {
   describe("from repository", () => {
@@ -49,7 +49,6 @@ describe("add command", () => {
         "--global",
       ]);
 
-      // Command ran
       const output = result.stdout + result.stderr;
       expect(output.length).toBeGreaterThan(0);
     });
@@ -87,9 +86,7 @@ describe("add command", () => {
 
   describe("error handling", () => {
     it("shows error for invalid input", async () => {
-      // Test with clearly invalid input
       const result = await runCli(["add"]);
-      // Should show usage/error
       expect(result.stdout + result.stderr).toMatch(/error|usage|argument|required/i);
     });
   });

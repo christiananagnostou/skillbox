@@ -1,55 +1,14 @@
+import path from "node:path";
 import { describe, it, expect, beforeEach } from "vitest";
 import { runCli, runCliJson, assertJsonResponse } from "../helpers/cli.js";
-import { testEnv } from "../setup.js";
 import { VALID_SKILL_MARKDOWN } from "../helpers/fixtures.js";
-import fs from "node:fs/promises";
-import path from "node:path";
+import { testEnv } from "../setup.js";
 
 describe("meta set command", () => {
   beforeEach(async () => {
-    // Create a local skill to test meta commands (avoids network dependency)
-    const skillDir = path.join(testEnv.skillsDir, "test-meta-skill");
-    await fs.mkdir(skillDir, { recursive: true });
-    await fs.writeFile(path.join(skillDir, "SKILL.md"), VALID_SKILL_MARKDOWN);
-    await fs.writeFile(
-      path.join(skillDir, "skill.json"),
-      JSON.stringify({
-        name: "test-meta-skill",
-        version: "1.0.0",
-        description: "A test skill for meta commands",
-        entry: "SKILL.md",
-        source: { type: "local" },
-        checksum: "abc123",
-        updatedAt: new Date().toISOString(),
-      })
-    );
-
-    // Add to index
-    const indexPath = path.join(testEnv.configDir, "index.json");
-    await fs.writeFile(
-      indexPath,
-      JSON.stringify({
-        version: 1,
-        skills: [
-          {
-            name: "test-meta-skill",
-            source: { type: "local" },
-            checksum: "abc123",
-            updatedAt: new Date().toISOString(),
-            installs: [
-              {
-                scope: "user",
-                agent: "claude",
-                path: path.join(testEnv.agentSkillsDir, "test-meta-skill"),
-              },
-            ],
-          },
-        ],
-      })
-    );
-
-    // Create symlink
-    await fs.symlink(skillDir, path.join(testEnv.agentSkillsDir, "test-meta-skill"));
+    await testEnv.installLocalSkill("test-meta-skill", VALID_SKILL_MARKDOWN, {
+      description: "A test skill for meta commands",
+    });
   });
 
   it("sets category", async () => {

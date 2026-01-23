@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { runCli, runCliJson, assertJsonResponse } from "../helpers/cli.js";
-import { testEnv } from "../setup.js";
 import { VALID_SKILL_MARKDOWN, SUBCOMMAND_ONE, SUBCOMMAND_TWO } from "../helpers/fixtures.js";
-import fs from "node:fs/promises";
-import path from "node:path";
+import { testEnv } from "../setup.js";
 
 describe("list command", () => {
   describe("with no skills", () => {
@@ -11,7 +9,6 @@ describe("list command", () => {
       const result = await runCli(["list"]);
 
       expect(result.exitCode).toBe(0);
-      // Either shows "(0)" or empty skills section
       expect(result.stdout).toMatch(/Global Skills|skills/i);
     });
 
@@ -30,49 +27,9 @@ describe("list command", () => {
 
   describe("with skills", () => {
     beforeEach(async () => {
-      // Create a test skill in the store
-      const skillDir = path.join(testEnv.skillsDir, "test-skill");
-      await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(path.join(skillDir, "SKILL.md"), VALID_SKILL_MARKDOWN);
-      await fs.writeFile(
-        path.join(skillDir, "skill.json"),
-        JSON.stringify({
-          name: "test-skill",
-          version: "1.0.0",
-          description: "A test skill",
-          entry: "SKILL.md",
-          source: { type: "local" },
-          checksum: "abc123",
-          updatedAt: new Date().toISOString(),
-        })
-      );
-
-      // Add to index
-      const indexPath = path.join(testEnv.configDir, "index.json");
-      await fs.writeFile(
-        indexPath,
-        JSON.stringify({
-          version: 1,
-          skills: [
-            {
-              name: "test-skill",
-              source: { type: "local" },
-              checksum: "abc123",
-              updatedAt: new Date().toISOString(),
-              installs: [
-                {
-                  scope: "user",
-                  agent: "claude",
-                  path: path.join(testEnv.agentSkillsDir, "test-skill"),
-                },
-              ],
-            },
-          ],
-        })
-      );
-
-      // Create symlink
-      await fs.symlink(skillDir, path.join(testEnv.agentSkillsDir, "test-skill"));
+      await testEnv.installLocalSkill("test-skill", VALID_SKILL_MARKDOWN, {
+        description: "A test skill",
+      });
     });
 
     it("shows skill in list", async () => {
@@ -95,59 +52,17 @@ describe("list command", () => {
   });
 
   describe("with subcommands", () => {
-    beforeEach(async () => {
-      // Create a skill with subcommands
-      const skillDir = path.join(testEnv.skillsDir, "multi-skill");
-      await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(
-        path.join(skillDir, "SKILL.md"),
-        `---
+    const MULTI_SKILL_CONTENT = `---
 name: multi-skill
 description: A skill with subcommands
 ---
-Main skill.`
-      );
-      await fs.writeFile(path.join(skillDir, "one.md"), SUBCOMMAND_ONE);
-      await fs.writeFile(path.join(skillDir, "two.md"), SUBCOMMAND_TWO);
-      await fs.writeFile(
-        path.join(skillDir, "skill.json"),
-        JSON.stringify({
-          name: "multi-skill",
-          version: "1.0.0",
-          description: "A skill with subcommands",
-          entry: "SKILL.md",
-          source: { type: "local" },
-          checksum: "def456",
-          updatedAt: new Date().toISOString(),
-        })
-      );
+Main skill.`;
 
-      // Add to index
-      const indexPath = path.join(testEnv.configDir, "index.json");
-      await fs.writeFile(
-        indexPath,
-        JSON.stringify({
-          version: 1,
-          skills: [
-            {
-              name: "multi-skill",
-              source: { type: "local" },
-              checksum: "def456",
-              updatedAt: new Date().toISOString(),
-              installs: [
-                {
-                  scope: "user",
-                  agent: "claude",
-                  path: path.join(testEnv.agentSkillsDir, "multi-skill"),
-                },
-              ],
-            },
-          ],
-        })
-      );
-
-      // Create symlink
-      await fs.symlink(skillDir, path.join(testEnv.agentSkillsDir, "multi-skill"));
+    beforeEach(async () => {
+      await testEnv.installLocalSkill("multi-skill", MULTI_SKILL_CONTENT, {
+        description: "A skill with subcommands",
+        subcommands: { one: SUBCOMMAND_ONE, two: SUBCOMMAND_TWO },
+      });
     });
 
     it("shows subcommands in list output", async () => {

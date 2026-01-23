@@ -1,7 +1,3 @@
-/**
- * Test fixtures for skillbox tests
- */
-
 export const VALID_SKILL_MARKDOWN = `---
 name: test-skill
 description: A test skill for automated testing
@@ -93,9 +89,6 @@ description: Minimal valid skill
 Content.
 `;
 
-/**
- * Create skill content with custom name and description
- */
 export function createSkillContent(name: string, description: string): string {
   return `---
 name: ${name}
@@ -108,9 +101,6 @@ ${description}
 `;
 }
 
-/**
- * Test repo configurations
- */
 export const TEST_REPOS = {
   agentSkills: {
     owner: "vercel-labs",
@@ -125,9 +115,6 @@ export const TEST_REPOS = {
   },
 };
 
-/**
- * Test URLs
- */
 export const TEST_URLS = {
   validSkill:
     "https://raw.githubusercontent.com/vercel-labs/agent-skills/main/skills/web-design-guidelines/SKILL.md",

@@ -1,8 +1,14 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { describe, it, expect, beforeEach } from "vitest";
 import { runCli, runCliJson, assertJsonResponse } from "../helpers/cli.js";
 import { testEnv } from "../setup.js";
-import fs from "node:fs/promises";
-import path from "node:path";
+
+const PROJECT_SKILL = `---
+name: project-skill
+description: A project skill
+---
+Content.`;
 
 describe("project command", () => {
   describe("project add", () => {
@@ -19,17 +25,7 @@ describe("project command", () => {
     });
 
     it("auto-discovers skills in skills/ directory", async () => {
-      // Create a skill in the project
-      const skillDir = path.join(testEnv.projectDir, "skills", "project-skill");
-      await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(
-        path.join(skillDir, "SKILL.md"),
-        `---
-name: project-skill
-description: A project skill
----
-Content.`
-      );
+      await testEnv.createProjectSkill("project-skill", PROJECT_SKILL);
 
       const { result, data } = await runCliJson<{
         data: { skills: string[] };
@@ -120,19 +116,14 @@ Content.`
   });
 
   describe("project sync", () => {
-    beforeEach(async () => {
-      // Create project with skill
-      const skillDir = path.join(testEnv.projectDir, "skills", "sync-test-skill");
-      await fs.mkdir(skillDir, { recursive: true });
-      await fs.writeFile(
-        path.join(skillDir, "SKILL.md"),
-        `---
+    const SYNC_SKILL = `---
 name: sync-test-skill
 description: A skill for sync testing
 ---
-Content.`
-      );
+Content.`;
 
+    beforeEach(async () => {
+      await testEnv.createProjectSkill("sync-test-skill", SYNC_SKILL);
       await runCli(["project", "add", testEnv.projectDir]);
     });
 

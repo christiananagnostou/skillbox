@@ -1,4 +1,4 @@
-import { execa, type ExecaError, type Result } from "execa";
+import { execa, type Result } from "execa";
 import path from "node:path";
 
 const CLI_PATH = path.resolve(import.meta.dirname, "../../dist/cli.js");
@@ -16,34 +16,19 @@ export interface CliOptions {
   timeout?: number;
 }
 
-/**
- * Execute the skillbox CLI with given arguments
- */
 export async function runCli(args: string[], options: CliOptions = {}): Promise<CliResult> {
   const { cwd, env = {}, timeout = 30000 } = options;
 
-  try {
-    const result: Result = await execa("node", [CLI_PATH, ...args], {
-      cwd,
-      env: { ...process.env, ...env, FORCE_COLOR: "0", NO_COLOR: "1" },
-      timeout,
-      reject: false,
-    });
+  const result = await execa("node", [CLI_PATH, ...args], {
+    cwd,
+    env: { ...process.env, ...env, FORCE_COLOR: "0", NO_COLOR: "1" },
+    timeout,
+    reject: false,
+  });
 
-    return parseResult(result);
-  } catch (error) {
-    const execaError = error as ExecaError;
-    return {
-      exitCode: execaError.exitCode ?? 1,
-      stdout: execaError.stdout ?? "",
-      stderr: execaError.stderr ?? String(error),
-    };
-  }
+  return parseResult(result);
 }
 
-/**
- * Execute CLI and expect JSON output
- */
 export async function runCliJson<T = unknown>(
   args: string[],
   options: CliOptions = {}
@@ -55,9 +40,6 @@ export async function runCliJson<T = unknown>(
   };
 }
 
-/**
- * Execute CLI and expect success (exit code 0)
- */
 export async function runCliSuccess(args: string[], options: CliOptions = {}): Promise<CliResult> {
   const result = await runCli(args, options);
   if (result.exitCode !== 0) {
@@ -68,9 +50,6 @@ export async function runCliSuccess(args: string[], options: CliOptions = {}): P
   return result;
 }
 
-/**
- * Execute CLI and expect failure (non-zero exit code)
- */
 export async function runCliFailure(args: string[], options: CliOptions = {}): Promise<CliResult> {
   const result = await runCli(args, options);
   if (result.exitCode === 0) {
@@ -88,15 +67,12 @@ function parseResult(result: Result): CliResult {
   try {
     json = JSON.parse(stdout);
   } catch {
-    // Not JSON output
+    // Output is not JSON
   }
 
   return { exitCode, stdout, stderr, json };
 }
 
-/**
- * Assert CLI JSON response structure
- */
 export function assertJsonResponse(
   result: CliResult,
   expected: { ok: boolean; command: string }
