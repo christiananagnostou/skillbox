@@ -33,6 +33,10 @@
     "lint:ci": "oxlint --deny-warnings",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --reporter=verbose --reporter=junit --outputFile=test-results.xml",
     "prepublishOnly": "npm run lint:ci && npm run format:check && npm run build"
   },
   "dependencies": {
@@ -43,9 +47,12 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.19",
+    "@vitest/coverage-v8": "^4.0.18",
+    "execa": "^9.6.1",
     "oxfmt": "^0.16.0",
     "oxlint": "^0.16.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.2"
+    "typescript": "^5.4.2",
+    "vitest": "^4.0.18"
   }
 }
