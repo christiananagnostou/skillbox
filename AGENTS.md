@@ -36,10 +36,9 @@ npm run format:check
 ### Tests
 
 ```bash
-npm test              # Run all tests
-npm run test:watch    # Watch mode
-npm run test:coverage # With coverage report
-npm run test:ci       # CI mode with JUnit output
+npm test           # Run all tests
+npm run test:watch # Watch mode
+npm run test:ci    # CI mode with JUnit output
 ```
 
 Run a single test file:

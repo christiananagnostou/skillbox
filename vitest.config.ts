@@ -14,12 +14,6 @@ export default defineConfig({
         singleFork: true,
       },
     },
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "json", "html"],
-      include: ["src/**/*.ts"],
-      exclude: ["src/cli.ts"],
-    },
     setupFiles: ["tests/setup.ts"],
   },
 });
