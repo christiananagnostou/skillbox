@@ -72,7 +72,7 @@ const FRONTMATTER_ORDER = [
   "hooks",
 ];
 
-const INGEST_SCHEMA_TEXT = `Required JSON fields:\n- name (kebab-case)\n- description\n- body (markdown)\n- source { type, value }\n\nOptional fields:\n- frontmatter (Claude-allowed keys only)\n- namespace\n- categories, tags\n- subcommands [{ name, body, frontmatter? }]\n- supporting_files [{ path, contents }]\n\nRules:\n- SKILL.md frontmatter must include name + description\n- Subcommands are written as <name>.md in skill root\n- supporting_files paths must be relative (no .. or absolute paths)\n- Write JSON to ~/.config/skillbox/tmp/<name>.json or /tmp/skillbox-<name>.json\n- Delete the JSON file after a successful ingest\n- Return JSON only (no markdown fences)`;
+const INGEST_SCHEMA_TEXT = `Required JSON fields:\n- name (kebab-case)\n- description\n- body (markdown)\n- source { type, value }\n\nOptional fields:\n- frontmatter (Claude-allowed keys only)\n- namespace\n- categories, tags\n- subcommands [{ name, body, frontmatter? }]\n- supporting_files [{ path, contents }]\n\nRules:\n- SKILL.md frontmatter must include name + description\n- Subcommands are written as <name>.md in skill root\n- supporting_files paths must be relative (no .. or absolute paths)\n- Write JSON to ~/.config/skillbox/tmp/<name>.json or /tmp/skillbox-<name>.json\n- Or pipe JSON into: cat <file> | skillbox add --ingest -\n- Delete the JSON file after a successful ingest\n- Return JSON only (no markdown fences)`;
 
 const INGEST_TEMPLATE_JSON = `{
   "name": "algolia-docs",
@@ -112,7 +112,8 @@ export function buildIngestPrompt(input: string): string {
     "2) Synthesize a high-quality skill following Claude skill best practices.",
     "3) Return strict JSON matching the schema below.",
     "4) Save the JSON to ~/.config/skillbox/tmp/<name>.json or /tmp/skillbox-<name>.json.",
-    "5) After a successful ingest, delete the JSON file.",
+    "5) Or pipe JSON into: cat <file> | skillbox add --ingest -",
+    "6) After a successful ingest, delete the JSON file.",
     "",
     DIFY_GUIDANCE,
     "",
