@@ -5,6 +5,7 @@ import {
   buildIngestMetadata,
   buildIngestPrompt,
   buildSkillMarkdown,
+  buildSubcommandMarkdown,
   readIngestFile,
   writeIngestedSkillFiles,
 } from "../../src/lib/ingest.js";
@@ -93,6 +94,41 @@ describe("ingest helpers", () => {
     expect(prompt).toContain("Schema:");
     expect(prompt).toContain("Template:");
     expect(prompt).toContain("https://example.com");
+  });
+
+  it("renders subcommand frontmatter", () => {
+    const markdown = buildSubcommandMarkdown({
+      name: "subcommand",
+      body: "# Title\n\nBody",
+      frontmatter: {
+        description: "Subcommand description",
+        "argument-hint": "<id>",
+      },
+    });
+
+    expect(markdown).toContain("---");
+    expect(markdown).toContain('name: "subcommand"');
+    expect(markdown).toContain('description: "Subcommand description"');
+    expect(markdown).toContain('argument-hint: "<id>"');
+  });
+
+  it("rejects invalid frontmatter keys", async () => {
+    const payload = {
+      name: "bad-frontmatter",
+      description: "Bad frontmatter",
+      source: { type: "url", value: "https://example.com" },
+      body: "# Bad",
+      frontmatter: {
+        name: "bad-frontmatter",
+        description: "Bad frontmatter",
+        badKey: "nope",
+      },
+    };
+
+    const ingestFile = path.join(testEnv.testRoot, "bad-frontmatter.json");
+    await fs.writeFile(ingestFile, JSON.stringify(payload, null, 2));
+
+    await expect(readIngestFile(ingestFile)).rejects.toThrow(/frontmatter: Unrecognized key/);
   });
 
   it("rejects invalid supporting file paths", async () => {
