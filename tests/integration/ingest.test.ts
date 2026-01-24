@@ -3,6 +3,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import {
   buildIngestMetadata,
+  buildIngestPrompt,
   buildSkillMarkdown,
   readIngestFile,
   writeIngestedSkillFiles,
@@ -48,6 +49,50 @@ describe("ingest helpers", () => {
 
     await expect(fs.readFile(skillFile, "utf8")).resolves.toContain("Ingest Write");
     await expect(fs.readFile(subcommandFile, "utf8")).resolves.toContain("Sub");
+  });
+
+  it("builds frontmatter with ordered keys", () => {
+    const ingest = {
+      name: "ordered",
+      description: "Ordered frontmatter",
+      source: { type: "url", value: "https://example.com" },
+      body: "Body",
+      frontmatter: {
+        "allowed-tools": ["Read", "Write"],
+        "argument-hint": "<path>",
+      },
+    };
+
+    const markdown = buildSkillMarkdown(ingest);
+    const frontmatter = markdown.split("---")[1] ?? "";
+    expect(frontmatter.indexOf("name:")).toBeLessThan(frontmatter.indexOf("description:"));
+    expect(frontmatter.indexOf("description:")).toBeLessThan(frontmatter.indexOf("argument-hint:"));
+  });
+
+  it("adds namespace, categories, and tags to metadata", () => {
+    const ingest = {
+      name: "meta-skill",
+      description: "Metadata skill",
+      source: { type: "url", value: "https://example.com" },
+      body: "Body",
+      namespace: "testing",
+      categories: ["docs"],
+      tags: ["tagged"],
+    };
+
+    const markdown = buildSkillMarkdown(ingest);
+    const metadata = buildIngestMetadata(ingest, markdown);
+
+    expect(metadata.namespace).toBe("testing");
+    expect(metadata.categories).toEqual(["docs"]);
+    expect(metadata.tags).toEqual(["tagged"]);
+  });
+
+  it("builds prompt with schema and template", () => {
+    const prompt = buildIngestPrompt("https://example.com");
+    expect(prompt).toContain("Schema:");
+    expect(prompt).toContain("Template:");
+    expect(prompt).toContain("https://example.com");
   });
 
   it("rejects invalid supporting file paths", async () => {
