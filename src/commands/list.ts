@@ -251,8 +251,9 @@ function filterByAgents(skills: SkillEntry[], agents: string[]): SkillEntry[] {
 
 function filterUserScope(skills: SkillEntry[]): SkillEntry[] {
   return skills
-    .filter((skill) =>
-      skill.installs?.some((install) => install.scope === "user") ?? !skill.installs?.length
+    .filter(
+      (skill) =>
+        skill.installs?.some((install) => install.scope === "user") ?? !skill.installs?.length
     )
     .map((skill) => ({
       ...skill,
