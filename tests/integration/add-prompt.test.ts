@@ -21,5 +21,10 @@ describe("add prompt output", () => {
     expect(prompt).toContain("Template:");
     expect(prompt).toContain("Required JSON fields:");
     expect(prompt).toContain("Optional fields:");
+    expect(prompt).toContain("Quick start");
+    expect(prompt).toContain("Core workflow");
+    expect(prompt).toContain("Key concepts");
+    expect(prompt).toContain("Examples");
+    expect(prompt).toContain("References");
   });
 });

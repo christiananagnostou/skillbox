@@ -100,8 +100,7 @@ const INGEST_TEMPLATE_JSON = `{
   ]
 }`;
 
-const DIFY_GUIDANCE = `Follow these skill-creator patterns:\n- Keep SKILL.md concise (<500 lines); put deep detail in references/\n- Use scripts/ only for deterministic repeated tasks\n- Avoid README, changelog, installation guides\n- Put "when to use" guidance in frontmatter description
-\n- Use progressive disclosure: link to references from SKILL.md\nReference: https://raw.githubusercontent.com/langgenius/dify/main/.agents/skills/skill-creator/SKILL.md`;
+const DIFY_GUIDANCE = `Follow these skill-creator patterns:\n- Keep SKILL.md concise (<500 lines); put deep detail in references/\n- Use scripts/ only for deterministic repeated tasks\n- Avoid README, changelog, installation guides\n- Put "when to use" guidance in frontmatter description\n- Use progressive disclosure: link to references from SKILL.md\n- Body must not include YAML frontmatter (only use the frontmatter object)\n- Include sections: Quick start, Core workflow, Key concepts, Examples, References (use these exact labels)\nReference: https://raw.githubusercontent.com/langgenius/dify/main/.agents/skills/skill-creator/SKILL.md`;
 
 export function buildIngestPrompt(input: string): string {
   return [
@@ -138,6 +137,7 @@ export async function readIngestFile(filePath: string): Promise<IngestSkill> {
   }
 
   validateSupportingFiles(result.data.supporting_files ?? []);
+  ensureBodyHasNoFrontmatter(result.data.body);
   return result.data;
 }
 
@@ -259,6 +259,13 @@ function validateSupportingFiles(files: IngestSupportingFile[]): void {
     if (file.path.endsWith("SKILL.md") || file.path.endsWith("skill.json")) {
       throw new Error(`Supporting file cannot overwrite SKILL.md or skill.json: ${file.path}`);
     }
+  }
+}
+
+function ensureBodyHasNoFrontmatter(body: string): void {
+  const trimmed = body.trimStart();
+  if (trimmed.startsWith("---")) {
+    throw new Error("Ingest body must not include YAML frontmatter.");
   }
 }
 

@@ -131,6 +131,20 @@ describe("ingest helpers", () => {
     await expect(readIngestFile(ingestFile)).rejects.toThrow(/frontmatter: Unrecognized key/);
   });
 
+  it("rejects body that includes frontmatter", async () => {
+    const payload = {
+      name: "bad-body",
+      description: "Bad body",
+      source: { type: "url", value: "https://example.com" },
+      body: "---\nname: nope\n---\n\n# Body",
+    };
+
+    const ingestFile = path.join(testEnv.testRoot, "bad-body.json");
+    await fs.writeFile(ingestFile, JSON.stringify(payload, null, 2));
+
+    await expect(readIngestFile(ingestFile)).rejects.toThrow(/must not include yaml frontmatter/i);
+  });
+
   it("rejects invalid supporting file paths", async () => {
     const payload = {
       name: "bad-support",
