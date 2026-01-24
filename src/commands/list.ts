@@ -249,6 +249,18 @@ function filterByAgents(skills: SkillEntry[], agents: string[]): SkillEntry[] {
   );
 }
 
+function filterUserScope(skills: SkillEntry[]): SkillEntry[] {
+  return skills
+    .filter(
+      (skill) =>
+        skill.installs?.some((install) => install.scope === "user") ?? !skill.installs?.length
+    )
+    .map((skill) => ({
+      ...skill,
+      installs: skill.installs?.filter((install) => install.scope === "user"),
+    }));
+}
+
 export function registerList(program: Command): void {
   program
     .command("list")
@@ -264,9 +276,10 @@ export function registerList(program: Command): void {
       const indexedSkills = options.agents
         ? filterByAgents(index.skills, runtime.agentList)
         : index.skills;
-      const allSkills: SkillEntry[] = [...indexedSkills, ...globalSkills];
+      const scopedSkills = options.global ? filterUserScope(indexedSkills) : indexedSkills;
+      const mergedSkills: SkillEntry[] = [...scopedSkills, ...globalSkills];
 
-      const enrichedSkills = await enrichWithSubcommands(allSkills);
+      const enrichedSkills = await enrichWithSubcommands(mergedSkills);
 
       if (isJsonEnabled(options)) {
         printJson({
