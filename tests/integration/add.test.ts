@@ -167,9 +167,14 @@ describe("add command", () => {
       const ingestFile = path.join(testEnv.testRoot, "bad-ingest.json");
       await fs.writeFile(ingestFile, JSON.stringify({ name: "bad" }, null, 2));
 
-      const { result } = await runCliJson(["add", "--ingest", ingestFile]);
-      expect(result.exitCode).toBeGreaterThan(0);
-      expect(result.stdout + result.stderr).toMatch(/invalid ingest json/i);
+      const { result, data } = await runCliJson<{
+        ok: boolean;
+        command: string;
+        error?: { message: string };
+      }>(["add", "--ingest", ingestFile]);
+      expect(result.exitCode).toBe(0);
+      assertJsonResponse(result, { ok: false, command: "add" });
+      expect(data?.error?.message).toMatch(/invalid ingest json/i);
     });
 
     it("installs skill for specific agents with --agents flag", async () => {
