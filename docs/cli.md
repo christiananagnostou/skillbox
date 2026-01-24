@@ -50,7 +50,9 @@ Behavior:
 - If name cannot be inferred, requires --name.
 - Generates skill.json in canonical store.
 - Syncs to default agent targets unless --agents is provided.
-- Defaults to project scope unless --global is passed.
+- Defaults to user scope unless --global is passed.
+- If the URL is not a valid skill, prints an agent prompt with a strict JSON schema.
+- Use `skillbox add --ingest <json>` to ingest agent-generated skills.
 
 ### skillbox add <repo>
 
@@ -71,46 +73,37 @@ Behavior:
 - Tracks repo metadata so `skillbox update` refreshes from the repo.
 - Note: GitHub unauthenticated API limits are 60 requests per hour per IP, so heavy repo usage may hit rate limits.
 
-### skillbox convert <url>
+### skillbox add --ingest <json>
 
-Convert arbitrary content into a skill. This is designed for agent usage. The agent is expected to transform the content into SKILL.md + metadata.
+Ingest an agent-generated skill JSON payload. Use this after running `skillbox add <url>` on a non-skill URL.
 
 Examples:
 
-- skillbox convert https://example.com/blog-post
-- skillbox convert https://example.com/blog-post --agent
-- skillbox convert https://example.com/blog-post --name research-skill --output ./drafts
+- skillbox add --ingest ./algolia-skill.json
 
 Behavior:
 
-- Fetches content.
-- Writes a draft SKILL.md, skill.json, and source.txt into the output directory.
-- If --agent is set, the agent should refine the draft and SKILL.md using source.txt.
+- Validates the JSON payload against the Skillbox ingest schema.
+- Writes SKILL.md, subcommands, and supporting files into the canonical store.
+- Generates skill.json metadata and installs the skill using standard add behavior.
 
 ### skillbox list
 
-List all known skills across user + project scopes. Use --group to view categories, namespaces, sources, or projects.
+List all known skills across user + project scopes.
 
 Examples:
 
 - skillbox list
-- skillbox list --group=category
-- skillbox list --group=namespace
-- skillbox list --group=source
-- skillbox list --group=project
-- skillbox list --group=category
 - skillbox list --json
 
 ### skillbox status
 
-Check for outdated skills by comparing local checksums to remote sources. Use --group to view by project or source.
+Check for outdated skills by comparing local checksums to remote sources.
 
 Examples:
 
 - skillbox status
 - skillbox status --json
-- skillbox status --group=project
-- skillbox status --group=source
 
 Output includes:
 

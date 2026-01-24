@@ -28,7 +28,7 @@ type SourceGroup = {
 };
 
 // Sort sources: url first, then git (trackable sources first)
-const UPDATE_SOURCE_ORDER = ["url", "git", "local"];
+const UPDATE_SOURCE_ORDER = ["url", "git", "local", "convert"];
 
 function groupBySource(results: UpdateResult[]): SourceGroup[] {
   const grouped = groupAndSort(results, (r) => r.source, UPDATE_SOURCE_ORDER, sortByName);
@@ -45,7 +45,7 @@ function formatSourceHeader(group: SourceGroup): string {
   const count = group.results.length;
   const skillWord = count === 1 ? "skill" : "skills";
 
-  if (group.source === "local") {
+  if (group.source === "local" || group.source === "convert") {
     return `${group.source} (${count} ${skillWord} - skipped)`;
   }
 

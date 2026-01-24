@@ -23,6 +23,22 @@ skillbox update [name]     # update all or specific skill
 | `skillbox add owner/repo --list` | List skills in a repo first |
 | `skillbox add owner/repo --skill name` | Install specific skill |
 | `skillbox add <url>` | Install from direct URL |
+| `skillbox add --ingest <json>` | Ingest agent-converted skill JSON |
+
+If a URL is not a valid `SKILL.md`, Skillbox prints an agent prompt with a strict JSON schema. Use an agent to fetch and extract the content, then run `skillbox add --ingest <json>`.
+
+## Skill Conversion Guidelines
+
+When creating skills from docs or web pages, follow these principles:
+
+- Keep `SKILL.md` concise and action-oriented (under ~500 lines)
+- Put deep documentation into `references/` files and link them from `SKILL.md`
+- Use `scripts/` only for deterministic, repeated tasks
+- Avoid extra docs (README, changelog, installation guides)
+- Put "when to use" guidance in frontmatter `description`, not the body
+- Use subcommands as root-level `<name>.md` files
+
+Reference: https://raw.githubusercontent.com/langgenius/dify/main/.agents/skills/skill-creator/SKILL.md
 
 ## Removing Skills
 

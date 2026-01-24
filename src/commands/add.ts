@@ -1,34 +1,45 @@
 import type { Command } from "commander";
-import path from "node:path";
 import { handleCommandError } from "../lib/command.js";
-import { loadConfig } from "../lib/config.js";
+import {
+  buildIngestMetadata,
+  buildIngestPrompt,
+  buildSkillMarkdown,
+  readIngestFile,
+  writeIngestedSkillFiles,
+} from "../lib/ingest.js";
+import { installSkillToRuntime } from "../lib/install-runtime.js";
 import { fetchText } from "../lib/fetcher.js";
 import { collect } from "../lib/fs-utils.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
-import { recordInstallPaths } from "../lib/installs.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
-import { buildProjectAgentPaths } from "../lib/project-paths.js";
-import { ensureProjectRegistered, resolveRuntime } from "../lib/runtime.js";
 import { buildMetadata, inferNameFromUrl, parseSkillMarkdown } from "../lib/skill-parser.js";
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
-import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
-import type { SkillInstall } from "../lib/types.js";
 import { handleRepoInstall, isRepoUrl } from "./add-repo.js";
 
 export function registerAdd(program: Command): void {
   program
     .command("add")
-    .argument("<url>", "Skill URL or repo")
+    .argument("[input]", "Skill URL or repo")
     .option("--name <name>", "Override skill name")
     .option("--global", "Install to user scope")
     .option("--agents <list>", "Comma-separated agent list")
     .option("--skill <skill>", "Skill name to install", collect)
     .option("--list", "List skills in repo without installing")
+    .option("--ingest <file>", "Ingest agent conversion JSON")
     .option("--json", "JSON output")
-    .action(async (url, options) => {
+    .action(async (input, options) => {
       try {
-        if (options.list || options.skill || isRepoUrl(url)) {
-          await handleRepoInstall(url, {
+        if (options.ingest) {
+          await handleIngest(options.ingest, options);
+          return;
+        }
+
+        if (!input) {
+          throw new Error("Provide a URL or repo, or use --ingest.");
+        }
+
+        if (options.list || options.skill || isRepoUrl(input)) {
+          await handleRepoInstall(input, {
             global: options.global,
             agents: options.agents,
             json: options.json,
@@ -38,26 +49,17 @@ export function registerAdd(program: Command): void {
           return;
         }
 
-        const skillMarkdown = await fetchText(url);
+        const skillMarkdown = await fetchText(input);
         const parsed = parseSkillMarkdown(skillMarkdown);
-        const inferred = inferNameFromUrl(url);
+        const inferred = inferNameFromUrl(input);
         const skillName = options.name ?? inferred ?? parsed.name;
 
-        if (!skillName) {
-          throw new Error("Unable to infer skill name. Use --name to specify it.");
+        if (!skillName || !parsed.description || (!parsed.name && !options.name)) {
+          await handlePromptFallback(input, options);
+          return;
         }
 
-        if (!parsed.name && !options.name) {
-          throw new Error("Skill frontmatter missing name. Provide --name to continue.");
-        }
-
-        if (!parsed.description) {
-          throw new Error(
-            "Skill frontmatter missing description. Convert the source into a valid skill."
-          );
-        }
-
-        const metadata = buildMetadata(parsed, { type: "url", url }, skillName);
+        const metadata = buildMetadata(parsed, { type: "url", url: input }, skillName);
 
         await ensureSkillsDir();
         await writeSkillFiles(skillName, skillMarkdown, metadata);
@@ -65,57 +67,28 @@ export function registerAdd(program: Command): void {
         const index = await loadIndex();
         const updated = upsertSkill(index, {
           name: skillName,
-          source: { type: "url", url },
+          source: { type: "url", url: input },
           checksum: parsed.checksum,
           updatedAt: metadata.updatedAt,
+          namespace: metadata.namespace,
+          categories: metadata.categories,
+          tags: metadata.tags,
         });
 
-        const { projectRoot, scope, agentList } = await resolveRuntime({
-          global: options.global,
-          agents: options.agents,
-        });
-        const projectEntry = await ensureProjectRegistered(projectRoot, scope);
-        const paths = buildProjectAgentPaths(projectRoot, projectEntry);
-        const config = await loadConfig();
-        const installed: { agent: string; scope: string; targets: string[] }[] = [];
-        const installs: SkillInstall[] = [];
-        const recordedPaths = new Set<string>();
-
-        for (const agent of agentList) {
-          const map = paths[agent];
-          if (!map) {
-            continue;
-          }
-          const targets = buildTargets(agent, map, scope).map((target) =>
-            path.join(target.path, skillName)
-          );
-          const results = await installSkillToTargets(skillName, targets, config);
-          const warnings = buildSymlinkWarning(agent, results);
-          for (const warning of warnings) {
-            printInfo(warning);
-          }
-          // Record all targets, not just successfully written ones
-          // The warning tells users about symlink issues, but we still track the install intent
-          const deduped = recordInstallPaths(targets, recordedPaths);
-          if (deduped.length > 0) {
-            installed.push({ agent, scope, targets: deduped });
-            for (const target of deduped) {
-              installs.push({
-                scope,
-                agent,
-                path: target,
-                projectRoot: scope === "project" ? projectRoot : undefined,
-              });
-            }
-          }
+        const runtimeInstall = await installSkillToRuntime(skillName, options);
+        for (const warning of runtimeInstall.warnings) {
+          printInfo(warning);
         }
 
         const nextIndex = upsertSkill(updated, {
           name: skillName,
-          source: { type: "url", url },
+          source: { type: "url", url: input },
           checksum: parsed.checksum,
           updatedAt: metadata.updatedAt,
-          installs,
+          installs: runtimeInstall.installs,
+          namespace: metadata.namespace,
+          categories: metadata.categories,
+          tags: metadata.tags,
         });
         await saveIndex(sortIndex(nextIndex));
 
@@ -125,9 +98,9 @@ export function registerAdd(program: Command): void {
             command: "add",
             data: {
               name: skillName,
-              source: { type: "url", url },
-              scope,
-              installs,
+              source: { type: "url", url: input },
+              scope: runtimeInstall.scope,
+              installs: runtimeInstall.installs,
             },
           });
           return;
@@ -136,12 +109,12 @@ export function registerAdd(program: Command): void {
         printInfo(`Skill Added: ${skillName}`);
         printInfo("");
         printInfo("Source: url");
-        printInfo(`  ${url}`);
+        printInfo(`  ${input}`);
 
-        if (installs.length > 0) {
+        if (runtimeInstall.installs.length > 0) {
           printInfo("");
           printInfo("Installed to:");
-          for (const install of installs) {
+          for (const install of runtimeInstall.installs) {
             const scopeLabel =
               install.scope === "project" ? `project:${install.projectRoot}` : "user";
             printInfo(`  ✓ ${scopeLabel}/${install.agent}`);
@@ -154,4 +127,101 @@ export function registerAdd(program: Command): void {
         handleCommandError(options, "add", error);
       }
     });
+}
+
+async function handlePromptFallback(input: string, options: { json?: boolean }): Promise<void> {
+  const prompt = buildIngestPrompt(input);
+
+  if (isJsonEnabled(options)) {
+    printJson({
+      ok: false,
+      command: "add",
+      error: {
+        message: "Input does not appear to be a valid skill.",
+      },
+      data: {
+        ingest: true,
+        prompt,
+        next: "skillbox add --ingest <json>",
+      },
+    });
+    return;
+  }
+
+  printInfo("This URL does not appear to be a valid skill.");
+  printInfo("Use an agent to extract and return JSON using the schema below.");
+  printInfo("Then run: skillbox add --ingest <json>");
+  printInfo("");
+  printInfo(prompt);
+}
+
+async function handleIngest(
+  filePath: string,
+  options: { json?: boolean; global?: boolean; agents?: string }
+): Promise<void> {
+  const ingest = await readIngestFile(filePath);
+  const skillMarkdown = buildSkillMarkdown(ingest);
+  const metadata = buildIngestMetadata(ingest, skillMarkdown);
+
+  await writeIngestedSkillFiles(ingest, skillMarkdown, metadata);
+
+  const index = await loadIndex();
+  const updated = upsertSkill(index, {
+    name: metadata.name,
+    source: metadata.source,
+    checksum: metadata.checksum,
+    updatedAt: metadata.updatedAt,
+    namespace: metadata.namespace,
+    categories: metadata.categories,
+    tags: metadata.tags,
+  });
+
+  const runtimeInstall = await installSkillToRuntime(metadata.name, options);
+  for (const warning of runtimeInstall.warnings) {
+    printInfo(warning);
+  }
+
+  const nextIndex = upsertSkill(updated, {
+    name: metadata.name,
+    source: metadata.source,
+    checksum: metadata.checksum,
+    updatedAt: metadata.updatedAt,
+    installs: runtimeInstall.installs,
+    namespace: metadata.namespace,
+    categories: metadata.categories,
+    tags: metadata.tags,
+  });
+  await saveIndex(sortIndex(nextIndex));
+
+  if (isJsonEnabled(options)) {
+    printJson({
+      ok: true,
+      command: "add",
+      data: {
+        name: metadata.name,
+        source: metadata.source,
+        scope: runtimeInstall.scope,
+        installs: runtimeInstall.installs,
+        ingest: true,
+      },
+    });
+    return;
+  }
+
+  printInfo(`Skill Added: ${metadata.name}`);
+  printInfo("");
+  printInfo("Source: convert");
+  printInfo(`  ${metadata.source.value ?? "(unknown)"}`);
+
+  if (runtimeInstall.installs.length > 0) {
+    printInfo("");
+    printInfo("Installed to:");
+    for (const install of runtimeInstall.installs) {
+      const scopeLabel = install.scope === "project" ? `project:${install.projectRoot}` : "user";
+      printInfo(`  ✓ ${scopeLabel}/${install.agent}`);
+    }
+  } else {
+    printInfo("");
+    printInfo("No agent targets were updated.");
+  }
 }
