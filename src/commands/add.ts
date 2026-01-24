@@ -1,3 +1,5 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { Command } from "commander";
 import { handleCommandError } from "../lib/command.js";
 import {
@@ -16,6 +18,27 @@ import { buildMetadata, inferNameFromUrl, parseSkillMarkdown } from "../lib/skil
 import { ensureSkillsDir, writeSkillFiles } from "../lib/skill-store.js";
 import { handleRepoInstall, isRepoUrl } from "./add-repo.js";
 
+async function resolveIngestPath(filePath: string): Promise<string> {
+  if (filePath === "-") {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) {
+      chunks.push(Buffer.from(chunk));
+    }
+    const content = Buffer.concat(chunks).toString("utf8");
+    if (!content.trim()) {
+      throw new Error("Ingest stdin is empty.");
+    }
+
+    const { skillboxTmpDir } = await import("../lib/paths.js");
+    await fs.mkdir(skillboxTmpDir(), { recursive: true });
+    const tempFile = path.join(skillboxTmpDir(), "ingest-stdin.json");
+    await fs.writeFile(tempFile, content, "utf8");
+    return tempFile;
+  }
+
+  return filePath;
+}
+
 export function registerAdd(program: Command): void {
   program
     .command("add")
@@ -25,7 +48,7 @@ export function registerAdd(program: Command): void {
     .option("--agents <list>", "Comma-separated agent list")
     .option("--skill <skill>", "Skill name to install", collect)
     .option("--list", "List skills in repo without installing")
-    .option("--ingest <file>", "Ingest agent conversion JSON")
+    .option("--ingest <file>", "Ingest agent conversion JSON (use '-' for stdin)")
     .option("--json", "JSON output")
     .action(async (input, options) => {
       if (options.ingest) {
@@ -168,7 +191,8 @@ async function handleIngest(
   options: { json?: boolean; global?: boolean; agents?: string }
 ): Promise<void> {
   try {
-    const ingest = await readIngestFile(filePath);
+    const ingestPath = await resolveIngestPath(filePath);
+    const ingest = await readIngestFile(ingestPath);
     const skillMarkdown = buildSkillMarkdown(ingest);
     const metadata = buildIngestMetadata(ingest, skillMarkdown);
 
