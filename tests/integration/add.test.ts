@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { runCli, runCliJson, assertJsonResponse } from "../helpers/cli.js";
@@ -83,6 +84,94 @@ describe("add command", () => {
       }
     });
 
+    it("prints ingest prompt for non-skill URL", async () => {
+      const { result, data } = await runCliJson<{
+        ok: boolean;
+        command: string;
+        error?: { message: string };
+        data?: { ingest?: boolean; prompt?: string; next?: string };
+      }>(["add", TEST_URLS.invalidUrl]);
+
+      expect(result.exitCode).toBe(0);
+      assertJsonResponse(result, { ok: false, command: "add" });
+      expect(data?.data?.ingest).toBe(true);
+      expect(data?.data?.next).toContain("skillbox add --ingest");
+      expect(data?.data?.prompt).toContain("Schema:");
+    });
+
+    it("prints ingest prompt for unreachable URL", async () => {
+      const { result, data } = await runCliJson<{
+        ok: boolean;
+        command: string;
+        error?: { message: string };
+        data?: { ingest?: boolean; prompt?: string; next?: string };
+      }>(["add", "https://example.invalid/not-found"]);
+
+      if (result.exitCode === 0 && data?.data?.ingest) {
+        assertJsonResponse(result, { ok: false, command: "add" });
+        expect(data?.data?.next).toContain("skillbox add --ingest");
+        expect(data?.data?.prompt).toContain("Schema:");
+      } else {
+        expect(result.stdout + result.stderr).toMatch(/fetch failed|invalid|error/i);
+      }
+    });
+
+    it("ingests agent JSON and installs", async () => {
+      const ingestPayload = {
+        name: "ingest-test",
+        description: "Ingest test skill",
+        source: { type: "url", value: "https://example.com" },
+        body: "# Ingest\n\nTest content.",
+        namespace: "testing",
+        categories: ["docs"],
+        tags: ["ingest"],
+        subcommands: [
+          {
+            name: "ingest-sub",
+            body: "# Sub\n\nSubcommand body.",
+          },
+        ],
+        supporting_files: [
+          {
+            path: "references/info.md",
+            contents: "# Info\n\nReference content.",
+          },
+        ],
+      };
+
+      const ingestFile = path.join(testEnv.testRoot, "ingest.json");
+      await fs.writeFile(ingestFile, JSON.stringify(ingestPayload, null, 2));
+
+      const { result, data } = await runCliJson<{
+        ok: boolean;
+        command: string;
+        data: { name: string; source: { type: string } };
+      }>(["add", "--ingest", ingestFile]);
+
+      expect(result.exitCode).toBe(0);
+      assertJsonResponse(result, { ok: true, command: "add" });
+      expect(data?.data.name).toBe("ingest-test");
+      expect(data?.data.source.type).toBe("convert");
+
+      const skillDir = path.join(testEnv.skillsDir, "ingest-test");
+      const skillFile = path.join(skillDir, "SKILL.md");
+      const subcommandFile = path.join(skillDir, "ingest-sub.md");
+      const referenceFile = path.join(skillDir, "references", "info.md");
+
+      expect(await testEnv.fileExists(skillFile)).toBe(true);
+      expect(await testEnv.fileExists(subcommandFile)).toBe(true);
+      expect(await testEnv.fileExists(referenceFile)).toBe(true);
+    });
+
+    it("rejects invalid ingest payloads", async () => {
+      const ingestFile = path.join(testEnv.testRoot, "bad-ingest.json");
+      await fs.writeFile(ingestFile, JSON.stringify({ name: "bad" }, null, 2));
+
+      const { result } = await runCliJson(["add", "--ingest", ingestFile]);
+      expect(result.exitCode).toBeGreaterThan(0);
+      expect(result.stdout + result.stderr).toMatch(/invalid ingest json/i);
+    });
+
     it("installs skill for specific agents with --agents flag", async () => {
       const { result, data } = await runCliJson<{
         ok: boolean;
@@ -107,7 +196,7 @@ describe("add command", () => {
   describe("error handling", () => {
     it("shows error for invalid input", async () => {
       const result = await runCli(["add"]);
-      expect(result.stdout + result.stderr).toMatch(/error|usage|argument|required/i);
+      expect(result.stdout + result.stderr).toMatch(/required|url|repo|ingest/i);
     });
   });
 });
