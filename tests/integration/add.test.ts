@@ -82,6 +82,26 @@ describe("add command", () => {
         expect(exists).toBe(true);
       }
     });
+
+    it("installs skill for specific agents with --agents flag", async () => {
+      const { result, data } = await runCliJson<{
+        ok: boolean;
+        command: string;
+        data: { name: string; installs: Array<{ agent: string; scope: string }> };
+      }>(["add", TEST_URLS.validSkill, "--name", "agents-test-skill", "--agents", "cursor"]);
+
+      if (result.exitCode === 0 && data?.ok) {
+        assertJsonResponse(result, { ok: true, command: "add" });
+
+        const installs = data?.data.installs ?? [];
+        expect(installs.length).toBeGreaterThan(0);
+        for (const install of installs) {
+          expect(install.agent).toBe("cursor");
+        }
+      } else {
+        expect(result.stdout + result.stderr).toMatch(/error|failed|rate|network|fetch/i);
+      }
+    });
   });
 
   describe("error handling", () => {

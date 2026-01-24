@@ -49,4 +49,30 @@ describe("remove command", () => {
 
     expect(result.stdout + result.stderr).toMatch(/not found|error/i);
   });
+
+  it("removes only project installs with --project", async () => {
+    await testEnv.installProjectSkill("project-remove-skill", VALID_SKILL_MARKDOWN, {
+      description: "Project remove skill",
+    });
+
+    const { result, data } = await runCliJson<{
+      data: {
+        removed: Array<{ scope: string; projectRoot?: string }>;
+        removedCanonical: boolean;
+      };
+    }>(["remove", "project-remove-skill", "--project", testEnv.projectDir]);
+
+    expect(result.exitCode).toBe(0);
+    expect(data?.data.removedCanonical).toBe(false);
+    const removed = data?.data.removed ?? [];
+    expect(removed.length).toBeGreaterThan(0);
+    for (const install of removed) {
+      expect(install.scope).toBe("project");
+      expect(install.projectRoot).toBe(testEnv.projectDir);
+    }
+
+    const skillPath = path.join(testEnv.skillsDir, "project-remove-skill");
+    const exists = await testEnv.fileExists(skillPath);
+    expect(exists).toBe(true);
+  });
 });

@@ -15,6 +15,22 @@ export class TestEnvironment {
 
   private originalEnv: Record<string, string | undefined> = {};
 
+  private async writeDefaultConfig(): Promise<void> {
+    await fs.writeFile(
+      path.join(this.configDir, "config.json"),
+      JSON.stringify(
+        {
+          version: 1,
+          defaultAgents: ["claude"],
+          defaultScope: "user",
+          installMode: "symlink",
+        },
+        null,
+        2
+      )
+    );
+  }
+
   async setup(): Promise<void> {
     // Create isolated test root
     this.testRoot = await fs.mkdtemp(path.join(os.tmpdir(), "skillbox-test-"));
@@ -35,19 +51,7 @@ export class TestEnvironment {
     );
 
     // Initialize config
-    await fs.writeFile(
-      path.join(this.configDir, "config.json"),
-      JSON.stringify(
-        {
-          version: 1,
-          defaultAgents: ["claude"],
-          defaultScope: "user",
-          installMode: "symlink",
-        },
-        null,
-        2
-      )
-    );
+    await this.writeDefaultConfig();
 
     // Initialize empty projects
     await fs.writeFile(
@@ -106,11 +110,18 @@ export class TestEnvironment {
       JSON.stringify({ version: 1, skills: [] }, null, 2)
     );
 
+    // Reset config
+    await this.writeDefaultConfig();
+
     // Reset projects
     await fs.writeFile(
       path.join(this.configDir, "projects.json"),
       JSON.stringify({ version: 1, projects: [] }, null, 2)
     );
+
+    // Reset project directory contents
+    await fs.rm(this.projectDir, { recursive: true, force: true });
+    await fs.mkdir(this.projectDir, { recursive: true });
   }
 
   async createSkillDir(name: string, content: string): Promise<string> {
@@ -203,6 +214,67 @@ export class TestEnvironment {
     await fs.writeFile(indexPath, JSON.stringify(index, null, 2));
 
     await fs.symlink(skillDir, path.join(this.agentSkillsDir, name));
+
+    return skillDir;
+  }
+
+  async installProjectSkill(
+    name: string,
+    skillContent: string,
+    options: {
+      description?: string;
+      subcommands?: Record<string, string>;
+    } = {}
+  ): Promise<string> {
+    const { description = `A test skill: ${name}`, subcommands } = options;
+    const skillDir = path.join(this.skillsDir, name);
+    const checksum = `test-checksum-${name}`;
+    const updatedAt = new Date().toISOString();
+    const projectAgentDir = path.join(this.projectDir, ".claude", "skills");
+
+    await fs.mkdir(skillDir, { recursive: true });
+    await fs.writeFile(path.join(skillDir, "SKILL.md"), skillContent);
+
+    if (subcommands) {
+      for (const [subName, content] of Object.entries(subcommands)) {
+        await fs.writeFile(path.join(skillDir, `${subName}.md`), content);
+      }
+    }
+
+    await fs.writeFile(
+      path.join(skillDir, "skill.json"),
+      JSON.stringify({
+        name,
+        version: "1.0.0",
+        description,
+        entry: "SKILL.md",
+        source: { type: "local" },
+        checksum,
+        updatedAt,
+      })
+    );
+
+    const indexPath = path.join(this.configDir, "index.json");
+    const index = await this.readJson<{ version: number; skills: unknown[] }>(indexPath);
+    const installPath = path.join(projectAgentDir, name);
+    index.skills.push({
+      name,
+      source: { type: "local" },
+      checksum,
+      updatedAt,
+      installs: [
+        {
+          scope: "project",
+          agent: "claude",
+          path: installPath,
+          projectRoot: this.projectDir,
+        },
+      ],
+    });
+    await fs.writeFile(indexPath, JSON.stringify(index, null, 2));
+
+    await fs.mkdir(projectAgentDir, { recursive: true });
+    await fs.symlink(skillDir, installPath);
 
     return skillDir;
   }

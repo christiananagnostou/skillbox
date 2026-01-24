@@ -87,13 +87,42 @@ Main skill.`;
 
   describe("filtering", () => {
     it("filters by --global flag", async () => {
-      const result = await runCli(["list", "--global"]);
+      await testEnv.installLocalSkill("user-list-skill", VALID_SKILL_MARKDOWN, {
+        description: "User scope skill",
+      });
+
+      await testEnv.installProjectSkill("project-list-skill", VALID_SKILL_MARKDOWN, {
+        description: "Project scope skill",
+      });
+
+      const { result, data } = await runCliJson<{
+        data: { skills: Array<{ name: string }> };
+      }>(["list", "--global"]);
+
       expect(result.exitCode).toBe(0);
+      const names = data?.data.skills.map((skill) => skill.name) ?? [];
+      expect(names).toContain("user-list-skill");
+      expect(names).not.toContain("project-list-skill");
     });
 
     it("filters by --agents flag", async () => {
-      const result = await runCli(["list", "--agents", "claude"]);
+      await testEnv.installLocalSkill("agent-list-skill", VALID_SKILL_MARKDOWN, {
+        description: "Agent filter skill",
+      });
+
+      const { result, data } = await runCliJson<{
+        data: { skills: Array<{ name: string; installs?: Array<{ agent?: string }> }> };
+      }>(["list", "--agents", "claude"]);
+
       expect(result.exitCode).toBe(0);
+      const skillNames = data?.data.skills.map((skill) => skill.name) ?? [];
+      expect(skillNames).toContain("agent-list-skill");
+      const agents = data?.data.skills
+        .flatMap((skill) => skill.installs ?? [])
+        .map((install) => install.agent);
+      for (const agent of agents ?? []) {
+        expect(agent).toBe("claude");
+      }
     });
   });
 });

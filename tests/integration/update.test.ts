@@ -55,4 +55,34 @@ describe("update command", () => {
       expect(result.stdout + result.stderr).toMatch(/not found|error/i);
     });
   });
+
+  describe("with --project flag", () => {
+    it("updates project installs only", async () => {
+      await runCli(["config", "set", "--default-scope", "project"]);
+      const { result: addResult, data: addData } = await runCliJson<{
+        ok: boolean;
+        data?: { name: string };
+        error?: { message: string };
+      }>(["add", TEST_URLS.validSkill, "--name", "project-update-skill"], {
+        cwd: testEnv.projectDir,
+      });
+
+      if (addResult.exitCode !== 0 || addData?.ok === false) {
+        expect(addResult.stdout + addResult.stderr).toMatch(/error|failed|rate|network|fetch/i);
+        return;
+      }
+
+      const { result, data } = await runCliJson<{
+        data: {
+          project: string | null;
+          results: Array<{ name: string; status: string }>;
+        };
+      }>(["update", "project-update-skill", "--project", testEnv.projectDir]);
+
+      expect(result.exitCode).toBe(0);
+      expect(data?.data.project).toBe(testEnv.projectDir);
+      const updated = data?.data.results.find((entry) => entry.name === "project-update-skill");
+      expect(updated?.status).not.toBe("skipped");
+    });
+  });
 });
