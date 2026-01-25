@@ -36,8 +36,9 @@ skillbox update [name]     # update skills
 | `skillbox add owner/repo` | Install all skills from a GitHub repo |
 | `skillbox add owner/repo --list` | List available skills in a repo |
 | `skillbox add owner/repo --skill name` | Install a specific skill from a repo |
-| `skillbox add <url>` | Install skill from a direct URL |
+| `skillbox add <url>` | Install skill from a direct URL (or print agent prompt if not valid) |
 | `skillbox add <url> --name my-skill` | Install with custom name |
+| `skillbox add --ingest <json>` | Ingest agent-generated skill JSON |
 
 > **Note:** GitHub unauthenticated API limit is 60 requests/hour per IP.
 

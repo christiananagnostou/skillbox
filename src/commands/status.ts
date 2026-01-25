@@ -67,7 +67,7 @@ async function checkSkillStatus(skill: {
 }
 
 // Sort sources: url first, then git, then local (for status command - trackable first)
-const STATUS_SOURCE_ORDER = ["url", "git", "local"];
+const STATUS_SOURCE_ORDER = ["url", "git", "local", "convert"];
 
 function groupBySource(statuses: SkillStatus[]): SourceGroup[] {
   const grouped = groupAndSort(statuses, (s) => s.source, STATUS_SOURCE_ORDER, sortByName);

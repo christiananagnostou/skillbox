@@ -164,7 +164,7 @@ function groupByScope(skills: SkillWithSubcommands[]): ScopeGroup[] {
 }
 
 // Sort sources: local first, then git, then url (for list command)
-const LIST_SOURCE_ORDER = ["local", "git", "url"];
+const LIST_SOURCE_ORDER = ["local", "git", "url", "convert"];
 
 function groupBySourceType(
   skills: SkillWithSubcommands[]
