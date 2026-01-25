@@ -89,8 +89,8 @@ describe("ingest helpers", () => {
     expect(metadata.tags).toEqual(["tagged"]);
   });
 
-  it("builds prompt with schema and template", () => {
-    const prompt = buildIngestPrompt("https://example.com");
+  it("builds prompt with schema and template", async () => {
+    const prompt = await buildIngestPrompt("https://example.com");
     expect(prompt).toContain("Schema:");
     expect(prompt).toContain("Template:");
     expect(prompt).toContain("https://example.com");

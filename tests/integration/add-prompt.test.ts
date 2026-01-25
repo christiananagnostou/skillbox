@@ -26,5 +26,6 @@ describe("add prompt output", () => {
     expect(prompt).toContain("Key concepts");
     expect(prompt).toContain("Examples");
     expect(prompt).toContain("References");
+    expect(prompt).toContain("skill-creator/SKILL.md");
   });
 });

@@ -161,7 +161,7 @@ export function registerAdd(program: Command): void {
 }
 
 async function handlePromptFallback(input: string, options: { json?: boolean }): Promise<void> {
-  const prompt = buildIngestPrompt(input);
+  const prompt = await buildIngestPrompt(input);
 
   if (isJsonEnabled(options)) {
     printJson({

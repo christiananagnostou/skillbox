@@ -100,9 +100,10 @@ const INGEST_TEMPLATE_JSON = `{
   ]
 }`;
 
-const DIFY_GUIDANCE = `Follow these skill-creator patterns:\n- Keep SKILL.md concise (<500 lines); put deep detail in references/\n- Use scripts/ only for deterministic repeated tasks\n- Avoid README, changelog, installation guides\n- Put "when to use" guidance in frontmatter description\n- Use progressive disclosure: link to references from SKILL.md\n- Body must not include YAML frontmatter (only use the frontmatter object)\n- Include sections: Quick start, Core workflow, Key concepts, Examples, References (use these exact labels)\nReference: https://raw.githubusercontent.com/langgenius/dify/main/.agents/skills/skill-creator/SKILL.md`;
+const DIFY_GUIDANCE = `Read and follow Dify's skill-creator guide first:\nhttps://raw.githubusercontent.com/langgenius/dify/main/.agents/skills/skill-creator/SKILL.md\n\nFollow these skill-creator patterns:\n- Keep SKILL.md concise (<500 lines); put deep detail in references/\n- Use scripts/ only for deterministic repeated tasks\n- Avoid README, changelog, installation guides\n- Put "when to use" guidance in frontmatter description\n- Use progressive disclosure: link to references from SKILL.md\n- Body must not include YAML frontmatter (only use the frontmatter object)\n- Include sections: Quick start, Core workflow, Key concepts, Examples, References (use these exact labels)`;
 
-export function buildIngestPrompt(input: string): string {
+export async function buildIngestPrompt(input: string): Promise<string> {
+  const skillboxExcerpt = await getSkillboxGuidelinesExcerpt();
   return [
     "You are converting a source into a Skillbox skill.",
     `Input: ${input}`,
@@ -116,6 +117,8 @@ export function buildIngestPrompt(input: string): string {
     "6) After a successful ingest, delete the JSON file.",
     "",
     DIFY_GUIDANCE,
+    "",
+    ...skillboxExcerpt,
     "",
     "Schema:",
     INGEST_SCHEMA_TEXT,
@@ -200,6 +203,45 @@ export function buildIngestSource(ingest: IngestSkill): SkillSource {
     value: ingest.source.value,
     url: ingest.source.type === "url" ? ingest.source.value : undefined,
   };
+}
+
+async function getSkillboxGuidelinesExcerpt(): Promise<string[]> {
+  const skillboxPath = path.join(skillDir("skillbox"), "SKILL.md");
+  try {
+    const content = await fs.readFile(skillboxPath, "utf8");
+    const extracted = extractGuidelines(content);
+    if (extracted.length === 0) {
+      return [];
+    }
+    return ["Skillbox conversion guide (local):", ...extracted];
+  } catch {
+    return [
+      "Skillbox conversion guide (optional):",
+      "https://raw.githubusercontent.com/christiananagnostou/skills/main/skillbox/SKILL.md",
+    ];
+  }
+}
+
+function extractGuidelines(content: string): string[] {
+  const lines = content.split("\n");
+  const start = lines.findIndex((line) => line.trim() === "## Skill Conversion Guidelines");
+  if (start === -1) {
+    return [];
+  }
+  const collected: string[] = [];
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (line.trim().startsWith("## ")) {
+      break;
+    }
+    if (line.trim().startsWith("- ")) {
+      collected.push(line.trim());
+    }
+    if (collected.length >= 6) {
+      break;
+    }
+  }
+  return collected;
 }
 
 export function buildIngestMetadata(ingest: IngestSkill, skillMarkdown: string): SkillMetadata {
