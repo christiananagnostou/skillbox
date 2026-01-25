@@ -75,12 +75,8 @@ export function registerAdd(program: Command): void {
       let skillMarkdown: string;
       try {
         skillMarkdown = await fetchText(input);
-      } catch (error) {
-        if (error instanceof Error && error.message.includes("Failed to fetch")) {
-          await handlePromptFallback(input, options);
-          return;
-        }
-        handleCommandError(options, "add", error);
+      } catch {
+        await handlePromptFallback(input, options);
         return;
       }
 
