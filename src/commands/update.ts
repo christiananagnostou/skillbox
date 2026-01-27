@@ -7,9 +7,11 @@ import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { getInstallPaths } from "../lib/installs.js";
 import {
   isJsonEnabled,
+  printFailure,
   printInfo,
   printJson,
-  printProgressResult,
+  printSkipped,
+  printSuccess,
   startSpinner,
   stopSpinner,
 } from "../lib/output.js";
@@ -177,7 +179,7 @@ export function registerUpdate(program: Command): void {
               await updateUrlSkill(skill, index, projectRoot, config);
               results.push({ name: skill.name, source: "url", status: "updated" });
               if (showProgress) {
-                printProgressResult(`  ✓ ${skill.name}`);
+                printSuccess(skill.name);
               }
             } catch (err) {
               const errorMsg = err instanceof Error ? err.message : "unknown error";
@@ -188,7 +190,7 @@ export function registerUpdate(program: Command): void {
                 error: errorMsg,
               });
               if (showProgress) {
-                printProgressResult(`  ✗ ${skill.name} (${errorMsg})`);
+                printFailure(skill.name, errorMsg);
               }
             }
           } else if (skill.source.type === "git") {
@@ -199,7 +201,7 @@ export function registerUpdate(program: Command): void {
               await updateGitSkill(skill, index, projectRoot, config);
               results.push({ name: skill.name, source: "git", status: "updated" });
               if (showProgress) {
-                printProgressResult(`  ✓ ${skill.name}`);
+                printSuccess(skill.name);
               }
             } catch (err) {
               const errorMsg = err instanceof Error ? err.message : "unknown error";
@@ -210,13 +212,13 @@ export function registerUpdate(program: Command): void {
                 error: errorMsg,
               });
               if (showProgress) {
-                printProgressResult(`  ✗ ${skill.name} (${errorMsg})`);
+                printFailure(skill.name, errorMsg);
               }
             }
           } else {
             results.push({ name: skill.name, source: skill.source.type, status: "skipped" });
             if (showProgress) {
-              printProgressResult(`  - ${skill.name} (skipped)`);
+              printSkipped(skill.name, "skipped");
             }
           }
         }
