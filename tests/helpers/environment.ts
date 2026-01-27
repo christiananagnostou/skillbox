@@ -292,4 +292,22 @@ export class TestEnvironment {
     await fs.writeFile(path.join(skillDir, "SKILL.md"), content);
     return skillDir;
   }
+
+  async addSkillToIndex(skill: {
+    name: string;
+    source: { type: string; url?: string; repo?: string; path?: string; ref?: string };
+    checksum?: string;
+    updatedAt?: string;
+  }): Promise<void> {
+    const indexPath = path.join(this.configDir, "index.json");
+    const index = await this.readJson<{ version: number; skills: unknown[] }>(indexPath);
+    index.skills.push({
+      name: skill.name,
+      source: skill.source,
+      checksum: skill.checksum ?? `test-checksum-${skill.name}`,
+      updatedAt: skill.updatedAt ?? new Date().toISOString(),
+      installs: [],
+    });
+    await fs.writeFile(indexPath, JSON.stringify(index, null, 2));
+  }
 }

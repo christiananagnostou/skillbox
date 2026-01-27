@@ -5,7 +5,14 @@ import { loadConfig } from "../lib/config.js";
 import { fetchText } from "../lib/fetcher.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { getInstallPaths } from "../lib/installs.js";
-import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
+import {
+  isJsonEnabled,
+  printInfo,
+  printJson,
+  printProgressResult,
+  startSpinner,
+  stopSpinner,
+} from "../lib/output.js";
 import { fetchRepoFile, normalizeRepoRef, writeRepoSkillDirectory } from "../lib/repo-skills.js";
 import { buildMetadata, parseSkillMarkdown } from "../lib/skill-parser.js";
 import { ensureSkillsDir, writeSkillFiles, writeSkillMetadata } from "../lib/skill-store.js";
@@ -39,35 +46,6 @@ function groupBySource(results: UpdateResult[]): SourceGroup[] {
     updatedCount: items.filter((r) => r.status === "updated").length,
     failedCount: items.filter((r) => r.status === "failed").length,
   }));
-}
-
-function formatSourceHeader(group: SourceGroup): string {
-  const count = group.results.length;
-  const skillWord = count === 1 ? "skill" : "skills";
-
-  if (group.source === "local") {
-    return `${group.source} (${count} ${skillWord} - skipped)`;
-  }
-
-  if (group.failedCount > 0) {
-    return `${group.source} (${count} ${skillWord}, ${group.failedCount} failed)`;
-  }
-
-  return `${group.source} (${count} ${skillWord})`;
-}
-
-function printSourceGroup(group: SourceGroup): void {
-  printInfo(formatSourceHeader(group));
-
-  for (const result of group.results) {
-    if (result.status === "skipped") {
-      printInfo(`  - ${result.name}`);
-    } else if (result.status === "failed") {
-      printInfo(`  ✗ ${result.name} (${result.error ?? "failed"})`);
-    } else {
-      printInfo(`  ✓ ${result.name}`);
-    }
-  }
 }
 
 async function updateUrlSkill(
@@ -180,35 +158,71 @@ export function registerUpdate(program: Command): void {
         const config = await loadConfig();
         const projectRoot = options.project ? path.resolve(options.project) : null;
         const results: UpdateResult[] = [];
+        const showProgress = !isJsonEnabled(options);
 
-        for (const skill of targets) {
+        if (showProgress && targets.length > 0) {
+          printInfo(`Updating ${targets.length} skill${targets.length === 1 ? "" : "s"}...\n`);
+        }
+
+        const total = targets.length;
+        for (let i = 0; i < targets.length; i++) {
+          const skill = targets[i];
+          const progress = `(${i + 1}/${total})`;
+
           if (skill.source.type === "url") {
+            if (showProgress) {
+              startSpinner(`${skill.name} ${progress}`);
+            }
             try {
               await updateUrlSkill(skill, index, projectRoot, config);
               results.push({ name: skill.name, source: "url", status: "updated" });
+              if (showProgress) {
+                printProgressResult(`  ✓ ${skill.name}`);
+              }
             } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : "unknown error";
               results.push({
                 name: skill.name,
                 source: "url",
                 status: "failed",
-                error: err instanceof Error ? err.message : "unknown error",
+                error: errorMsg,
               });
+              if (showProgress) {
+                printProgressResult(`  ✗ ${skill.name} (${errorMsg})`);
+              }
             }
           } else if (skill.source.type === "git") {
+            if (showProgress) {
+              startSpinner(`${skill.name} ${progress}`);
+            }
             try {
               await updateGitSkill(skill, index, projectRoot, config);
               results.push({ name: skill.name, source: "git", status: "updated" });
+              if (showProgress) {
+                printProgressResult(`  ✓ ${skill.name}`);
+              }
             } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : "unknown error";
               results.push({
                 name: skill.name,
                 source: "git",
                 status: "failed",
-                error: err instanceof Error ? err.message : "unknown error",
+                error: errorMsg,
               });
+              if (showProgress) {
+                printProgressResult(`  ✗ ${skill.name} (${errorMsg})`);
+              }
             }
           } else {
             results.push({ name: skill.name, source: skill.source.type, status: "skipped" });
+            if (showProgress) {
+              printProgressResult(`  - ${skill.name} (skipped)`);
+            }
           }
+        }
+
+        if (showProgress) {
+          stopSpinner();
         }
 
         await saveIndex(sortIndex(index));
@@ -242,23 +256,17 @@ export function registerUpdate(program: Command): void {
           return;
         }
 
-        printInfo("Skill Update");
-
-        for (const group of sourceGroups) {
-          printInfo("");
-          printSourceGroup(group);
-        }
-
         // Summary line
-        printInfo("");
         if (totalFailed > 0) {
           printInfo(
-            `Updated ${totalUpdated} of ${totalTrackable} trackable skills (${totalFailed} failed).`
+            `\nUpdated ${totalUpdated} of ${totalTrackable} trackable skill${totalTrackable === 1 ? "" : "s"} (${totalFailed} failed).`
           );
         } else if (totalUpdated > 0) {
-          printInfo(`Updated ${totalUpdated} of ${totalTrackable} trackable skills.`);
+          printInfo(
+            `\nUpdated ${totalUpdated} of ${totalTrackable} trackable skill${totalTrackable === 1 ? "" : "s"}.`
+          );
         } else if (totalSkipped > 0 && totalTrackable === 0) {
-          printInfo("No trackable skills to update.");
+          printInfo("\nNo trackable skills to update.");
         }
       } catch (error) {
         handleCommandError(options, "update", error);
