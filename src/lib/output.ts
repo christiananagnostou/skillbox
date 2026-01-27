@@ -52,6 +52,20 @@ export function printProgressResult(message: string): void {
   process.stdout.write(`${message}\n`);
 }
 
+// Common result formatters for progress output
+export function printSuccess(name: string, suffix?: string): void {
+  const msg = suffix ? `  ✓ ${name} (${suffix})` : `  ✓ ${name}`;
+  printProgressResult(msg);
+}
+
+export function printFailure(name: string, error: string): void {
+  printProgressResult(`  ✗ ${name} (${error})`);
+}
+
+export function printSkipped(name: string, reason: string): void {
+  printProgressResult(`  - ${name} (${reason})`);
+}
+
 export function printJson(result: JsonResult): void {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }

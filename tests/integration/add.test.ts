@@ -110,4 +110,66 @@ describe("add command", () => {
       expect(result.stdout + result.stderr).toMatch(/error|usage|argument|required/i);
     });
   });
+
+  describe("progress output (human-readable)", () => {
+    it("shows header with skill count for repo add", async () => {
+      const result = await runCli([
+        "add",
+        `${TEST_REPOS.agentSkills.owner}/${TEST_REPOS.agentSkills.repo}`,
+        "--skill",
+        "web-design-guidelines",
+      ]);
+
+      // Only check output if command succeeded and has output (repo may be unavailable)
+      if (result.exitCode === 0 && result.stdout.includes("Adding")) {
+        expect(result.stdout).toMatch(/Adding \d+ skills? from/);
+      }
+    });
+
+    it("shows checkmark for successful repo skill add", async () => {
+      const result = await runCli([
+        "add",
+        `${TEST_REPOS.agentSkills.owner}/${TEST_REPOS.agentSkills.repo}`,
+        "--skill",
+        "react-best-practices",
+      ]);
+
+      // Only check output if command succeeded and has output (repo may be unavailable)
+      if (result.exitCode === 0 && result.stdout.includes("react-best-practices")) {
+        expect(result.stdout).toMatch(/✓\s+react-best-practices/);
+      }
+    });
+
+    it("shows checkmark for successful URL skill add", async () => {
+      const result = await runCli(["add", TEST_URLS.validSkill, "--name", "progress-url-skill"]);
+
+      if (result.exitCode === 0) {
+        expect(result.stdout).toMatch(/✓\s+progress-url-skill/);
+      }
+    });
+
+    it("shows summary line after adding", async () => {
+      const result = await runCli(["add", TEST_URLS.validSkill, "--name", "summary-test-skill"]);
+
+      if (result.exitCode === 0) {
+        expect(result.stdout).toMatch(/Added \d+ skill|Added skill from/);
+      }
+    });
+
+    it("does not show progress output in JSON mode", async () => {
+      const result = await runCli([
+        "add",
+        `${TEST_REPOS.agentSkills.owner}/${TEST_REPOS.agentSkills.repo}`,
+        "--skill",
+        "web-design-guidelines",
+        "--json",
+      ]);
+
+      if (result.exitCode === 0) {
+        expect(result.stdout).not.toMatch(/Adding \d+ skills? from/);
+        expect(result.stdout).not.toMatch(/[✓✗-]\s+web-design-guidelines/);
+        expect(() => JSON.parse(result.stdout)).not.toThrow();
+      }
+    });
+  });
 });

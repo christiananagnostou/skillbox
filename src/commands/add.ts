@@ -6,7 +6,14 @@ import { fetchText } from "../lib/fetcher.js";
 import { collect } from "../lib/fs-utils.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { recordInstallPaths } from "../lib/installs.js";
-import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
+import {
+  isJsonEnabled,
+  printInfo,
+  printJson,
+  printSuccess,
+  startSpinner,
+  stopSpinner,
+} from "../lib/output.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 import { ensureProjectRegistered, resolveRuntime } from "../lib/runtime.js";
 import { buildMetadata, inferNameFromUrl, parseSkillMarkdown } from "../lib/skill-parser.js";
@@ -38,20 +45,30 @@ export function registerAdd(program: Command): void {
           return;
         }
 
+        const showProgress = !isJsonEnabled(options);
+        const inferred = inferNameFromUrl(url);
+        const displayName = options.name ?? inferred ?? "skill";
+
+        if (showProgress) {
+          startSpinner(`Adding ${displayName}`);
+        }
+
         const skillMarkdown = await fetchText(url);
         const parsed = parseSkillMarkdown(skillMarkdown);
-        const inferred = inferNameFromUrl(url);
         const skillName = options.name ?? inferred ?? parsed.name;
 
         if (!skillName) {
+          if (showProgress) stopSpinner();
           throw new Error("Unable to infer skill name. Use --name to specify it.");
         }
 
         if (!parsed.name && !options.name) {
+          if (showProgress) stopSpinner();
           throw new Error("Skill frontmatter missing name. Provide --name to continue.");
         }
 
         if (!parsed.description) {
+          if (showProgress) stopSpinner();
           throw new Error(
             "Skill frontmatter missing description. Convert the source into a valid skill."
           );
@@ -120,6 +137,7 @@ export function registerAdd(program: Command): void {
         await saveIndex(sortIndex(nextIndex));
 
         if (isJsonEnabled(options)) {
+          stopSpinner();
           printJson({
             ok: true,
             command: "add",
@@ -133,23 +151,8 @@ export function registerAdd(program: Command): void {
           return;
         }
 
-        printInfo(`Skill Added: ${skillName}`);
-        printInfo("");
-        printInfo("Source: url");
-        printInfo(`  ${url}`);
-
-        if (installs.length > 0) {
-          printInfo("");
-          printInfo("Installed to:");
-          for (const install of installs) {
-            const scopeLabel =
-              install.scope === "project" ? `project:${install.projectRoot}` : "user";
-            printInfo(`  ✓ ${scopeLabel}/${install.agent}`);
-          }
-        } else {
-          printInfo("");
-          printInfo("No agent targets were updated.");
-        }
+        printSuccess(skillName);
+        printInfo(`\nAdded skill from ${url}.`);
       } catch (error) {
         handleCommandError(options, "add", error);
       }

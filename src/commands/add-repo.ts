@@ -4,7 +4,15 @@ import { loadConfig } from "../lib/config.js";
 import { parseRepoRef, type RepoRef } from "../lib/github.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
 import { recordInstallPaths } from "../lib/installs.js";
-import { printInfo, printJson } from "../lib/output.js";
+import {
+  printFailure,
+  printInfo,
+  printJson,
+  printSkipped,
+  printSuccess,
+  startSpinner,
+  stopSpinner,
+} from "../lib/output.js";
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 import {
   fetchRepoFile,
@@ -123,13 +131,22 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
 
   const summary: RepoInstallSummary = { installed: [], updated: [], skipped: [], failed: [] };
   const index = await loadIndex();
+  const showProgress = !options.json;
+  const selectedSkills = skills.filter((s) => selected.includes(s.name));
+  const total = selectedSkills.length;
 
-  for (const skill of skills) {
-    if (!selected.includes(skill.name)) {
-      continue;
-    }
+  if (showProgress && total > 0) {
+    printInfo(`Adding ${total} skill${total === 1 ? "" : "s"} from ${ref.owner}/${ref.repo}...\n`);
+  }
 
+  for (let i = 0; i < selectedSkills.length; i++) {
+    const skill = selectedSkills[i];
+    const progress = `(${i + 1}/${total})`;
     const alreadyInstalled = index.skills.some((entry) => entry.name === skill.name);
+
+    if (showProgress) {
+      startSpinner(`${skill.name} ${progress}`);
+    }
 
     try {
       const skillMarkdown = await fetchRepoFile(
@@ -139,6 +156,9 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
       const parsed = parseSkillMarkdown(skillMarkdown);
       if (!parsed.description) {
         summary.skipped.push(skill.name);
+        if (showProgress) {
+          printSkipped(skill.name, "missing description");
+        }
         continue;
       }
 
@@ -175,13 +195,26 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
       index.skills = nextIndex.skills;
       if (alreadyInstalled) {
         summary.updated.push(skill.name);
+        if (showProgress) {
+          printSuccess(skill.name, "updated");
+        }
       } else {
         summary.installed.push(skill.name);
+        if (showProgress) {
+          printSuccess(skill.name);
+        }
       }
     } catch (error) {
       const message = getErrorMessage(error, "unknown");
       summary.failed.push({ name: skill.name, reason: message });
+      if (showProgress) {
+        printFailure(skill.name, message);
+      }
     }
+  }
+
+  if (showProgress) {
+    stopSpinner();
   }
 
   await saveIndex(sortIndex(index));
@@ -191,46 +224,19 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
     return;
   }
 
-  printInfo(`Skills Added from: ${ref.owner}/${ref.repo}`);
-  printInfo("");
-  printInfo("Source: git");
-  printInfo(`  ${ref.owner}/${ref.repo}${ref.path ? `/${ref.path}` : ""} (${ref.ref})`);
+  // Summary line
+  const added = summary.installed.length + summary.updated.length;
+  const failed = summary.failed.length;
+  const skipped = summary.skipped.length;
 
-  if (summary.installed.length > 0) {
-    printInfo("");
-    printInfo(`Installed (${summary.installed.length}):`);
-    for (const name of summary.installed) {
-      printInfo(`  ✓ ${name}`);
-    }
-  }
-
-  if (summary.updated.length > 0) {
-    printInfo("");
-    printInfo(`Updated (${summary.updated.length}):`);
-    for (const name of summary.updated) {
-      printInfo(`  ✓ ${name}`);
-    }
-  }
-
-  if (summary.skipped.length > 0) {
-    printInfo("");
-    printInfo(`Skipped (${summary.skipped.length}):`);
-    for (const name of summary.skipped) {
-      printInfo(`  - ${name} (missing description)`);
-    }
-  }
-
-  if (summary.failed.length > 0) {
-    printInfo("");
-    printInfo(`Failed (${summary.failed.length}):`);
-    for (const failure of summary.failed) {
-      printInfo(`  ✗ ${failure.name} (${failure.reason})`);
-    }
-  }
-
-  const total = summary.installed.length + summary.updated.length;
-  if (total === 0) {
-    printInfo("");
-    printInfo("No skills were added.");
+  if (added > 0 && failed === 0 && skipped === 0) {
+    printInfo(`\nAdded ${added} skill${added === 1 ? "" : "s"} from ${ref.owner}/${ref.repo}.`);
+  } else if (added > 0) {
+    const parts = [];
+    if (failed > 0) parts.push(`${failed} failed`);
+    if (skipped > 0) parts.push(`${skipped} skipped`);
+    printInfo(`\nAdded ${added} skill${added === 1 ? "" : "s"} (${parts.join(", ")}).`);
+  } else {
+    printInfo("\nNo skills were added.");
   }
 }
