@@ -7,14 +7,17 @@ This document lists the skill directories used by each supported agent. These de
 Source: https://opencode.ai/docs/skills/
 
 Project scope:
+
 - .opencode/skills/<name>/SKILL.md
 - .claude/skills/<name>/SKILL.md (compat)
 
 User scope:
+
 - ~/.config/opencode/skills/<name>/SKILL.md
 - ~/.claude/skills/<name>/SKILL.md (compat)
 
 Discovery:
+
 - Walks upward from CWD to repo root, scanning .opencode/skills and .claude/skills.
 
 ## Claude Code
@@ -22,12 +25,15 @@ Discovery:
 Source: https://code.claude.com/docs/en/skills
 
 Project scope:
+
 - .claude/skills/<name>/SKILL.md
 
 User scope:
+
 - ~/.claude/skills/<name>/SKILL.md
 
 Discovery:
+
 - Supports nested .claude/skills directories in monorepos.
 
 ## Cursor
@@ -35,10 +41,12 @@ Discovery:
 Source: https://cursor.com/docs/context/skills
 
 Project scope:
+
 - .cursor/skills/<name>/SKILL.md
 - .claude/skills/<name>/SKILL.md (compat)
 
 User scope:
+
 - ~/.cursor/skills/<name>/SKILL.md
 - ~/.claude/skills/<name>/SKILL.md (compat)
 
@@ -47,11 +55,13 @@ User scope:
 Source: https://developers.openai.com/codex/skills/
 
 Project scope:
+
 - $CWD/.codex/skills/<name>/SKILL.md
 - $CWD/../.codex/skills/<name>/SKILL.md
 - $REPO_ROOT/.codex/skills/<name>/SKILL.md (install target)
 
 User scope:
+
 - ~/.codex/skills/<name>/SKILL.md
 
 ## Amp
@@ -59,10 +69,12 @@ User scope:
 Source: https://ampcode.com/news/agent-skills
 
 Project scope:
+
 - .agents/skills/<name>/SKILL.md
 - .claude/skills/<name>/SKILL.md (compat)
 
 User scope:
+
 - ~/.config/agents/skills/<name>/SKILL.md
 - ~/.claude/skills/<name>/SKILL.md (compat)
 
@@ -71,9 +83,11 @@ User scope:
 Source: internal spec provided by user
 
 Project scope:
+
 - .agent/skills/<name>/SKILL.md
 
 User scope:
+
 - ~/.gemini/antigravity/skills/<name>/SKILL.md
 
 ## Notes

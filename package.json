@@ -2,19 +2,15 @@
   "name": "skillbox",
   "version": "0.3.4",
   "description": "Local-first, agent-agnostic skills manager",
-  "license": "MIT",
-  "author": "Christian Anagnostou",
-  "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/christiananagnostou/skillbox.git"
-  },
   "homepage": "https://github.com/christiananagnostou/skillbox",
   "bugs": {
     "url": "https://github.com/christiananagnostou/skillbox/issues"
   },
-  "engines": {
-    "node": ">=20"
+  "license": "MIT",
+  "author": "Christian Anagnostou",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/christiananagnostou/skillbox.git"
   },
   "bin": {
     "skillbox": "dist/cli.js"
@@ -24,6 +20,7 @@
     "README.md",
     "LICENSE"
   ],
+  "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "ts-node-esm src/cli.ts",
@@ -39,18 +36,21 @@
     "prepublishOnly": "npm run lint:ci && npm run format:check && npm run build"
   },
   "dependencies": {
-    "chalk": "^5.3.0",
-    "commander": "^12.0.0",
-    "terminal-link": "^3.0.0",
-    "zod": "^3.23.8"
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "terminal-link": "^5.0.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^20.11.19",
+    "@types/node": "^25.2.0",
     "execa": "^9.6.1",
-    "oxfmt": "^0.16.0",
-    "oxlint": "^0.16.0",
+    "oxfmt": "^0.28.0",
+    "oxlint": "^1.43.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.2",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
