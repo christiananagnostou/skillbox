@@ -31,13 +31,13 @@ skillbox update [name]     # update skills
 
 ## Adding Skills
 
-| Command | Description |
-|---------|-------------|
-| `skillbox add owner/repo` | Install all skills from a GitHub repo |
-| `skillbox add owner/repo --list` | List available skills in a repo |
-| `skillbox add owner/repo --skill name` | Install a specific skill from a repo |
-| `skillbox add <url>` | Install skill from a direct URL |
-| `skillbox add <url> --name my-skill` | Install with custom name |
+| Command                                | Description                           |
+| -------------------------------------- | ------------------------------------- |
+| `skillbox add owner/repo`              | Install all skills from a GitHub repo |
+| `skillbox add owner/repo --list`       | List available skills in a repo       |
+| `skillbox add owner/repo --skill name` | Install a specific skill from a repo  |
+| `skillbox add <url>`                   | Install skill from a direct URL       |
+| `skillbox add <url> --name my-skill`   | Install with custom name              |
 
 > **Note:** GitHub unauthenticated API limit is 60 requests/hour per IP.
 
@@ -45,43 +45,43 @@ skillbox update [name]     # update skills
 
 ### Skills
 
-| Command | Description |
-|---------|-------------|
-| `skillbox list` | List installed skills |
-| `skillbox status` | Check for outdated skills |
-| `skillbox update [name]` | Update all or one skill |
-| `skillbox remove <name>` | Remove a skill |
-| `skillbox import <path>` | Import existing skill directory |
+| Command                    | Description                          |
+| -------------------------- | ------------------------------------ |
+| `skillbox list`            | List installed skills                |
+| `skillbox status`          | Check for outdated skills            |
+| `skillbox update [name]`   | Update all or one skill              |
+| `skillbox remove <name>`   | Remove a skill                       |
+| `skillbox import <path>`   | Import existing skill directory      |
 | `skillbox import --global` | Import all skills from agent folders |
 
 ### Config
 
-| Command | Description |
-|---------|-------------|
-| `skillbox config get` | Show current config |
-| `skillbox config set --add-agent <name>` | Add an agent |
+| Command                                       | Description                             |
+| --------------------------------------------- | --------------------------------------- |
+| `skillbox config get`                         | Show current config                     |
+| `skillbox config set --add-agent <name>`      | Add an agent                            |
 | `skillbox config set --default-scope <scope>` | Set default scope (`user` or `project`) |
-| `skillbox config set --install-mode <mode>` | Set install mode (`symlink` or `copy`) |
+| `skillbox config set --install-mode <mode>`   | Set install mode (`symlink` or `copy`)  |
 
 ### Projects
 
-| Command | Description |
-|---------|-------------|
-| `skillbox project add <path>` | Register a project and auto-import skills from `skills/` and agent directories |
-| `skillbox project list` | List registered projects |
-| `skillbox project inspect <path>` | Show project details and skills |
-| `skillbox project sync <path>` | Re-sync skills to a project |
+| Command                           | Description                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------ |
+| `skillbox project add <path>`     | Register a project and auto-import skills from `skills/` and agent directories |
+| `skillbox project list`           | List registered projects                                                       |
+| `skillbox project inspect <path>` | Show project details and skills                                                |
+| `skillbox project sync <path>`    | Re-sync skills to a project                                                    |
 
 ## Supported Agents
 
-| Agent | User Path | Project Path |
-|-------|-----------|--------------|
-| Claude | `~/.claude/skills/` | `.claude/skills/` |
-| Cursor | `~/.cursor/skills/` | `.cursor/skills/` |
-| Codex | `~/.codex/skills/` | `.codex/skills/` |
-| OpenCode | `~/.config/opencode/skills/` | `.opencode/skills/` |
-| Amp | `~/.config/agents/skills/` | `.agents/skills/` |
-| Antigravity | `~/.gemini/antigravity/skills/` | `.agent/skills/` |
+| Agent       | User Path                       | Project Path        |
+| ----------- | ------------------------------- | ------------------- |
+| Claude      | `~/.claude/skills/`             | `.claude/skills/`   |
+| Cursor      | `~/.cursor/skills/`             | `.cursor/skills/`   |
+| Codex       | `~/.codex/skills/`              | `.codex/skills/`    |
+| OpenCode    | `~/.config/opencode/skills/`    | `.opencode/skills/` |
+| Amp         | `~/.config/agents/skills/`      | `.agents/skills/`   |
+| Antigravity | `~/.gemini/antigravity/skills/` | `.agent/skills/`    |
 
 ## JSON Mode
 
@@ -109,11 +109,11 @@ Use `skillbox` to manage skills. Run `skillbox --help` for commands.
 
 ## File Locations
 
-| Path | Purpose |
-|------|---------|
-| `~/.config/skillbox/skills/` | Canonical skill store |
-| `~/.config/skillbox/config.json` | Configuration |
-| `~/.config/skillbox/index.json` | Skill index |
+| Path                             | Purpose               |
+| -------------------------------- | --------------------- |
+| `~/.config/skillbox/skills/`     | Canonical skill store |
+| `~/.config/skillbox/config.json` | Configuration         |
+| `~/.config/skillbox/index.json`  | Skill index           |
 
 ## Development
 

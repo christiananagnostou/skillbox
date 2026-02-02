@@ -17,12 +17,12 @@ skillbox update [name]     # update all or specific skill
 
 ## Adding Skills
 
-| Command | Description |
-|---------|-------------|
-| `skillbox add owner/repo` | Install all skills from a repo |
-| `skillbox add owner/repo --list` | List skills in a repo first |
-| `skillbox add owner/repo --skill name` | Install specific skill |
-| `skillbox add <url>` | Install from direct URL |
+| Command                                | Description                    |
+| -------------------------------------- | ------------------------------ |
+| `skillbox add owner/repo`              | Install all skills from a repo |
+| `skillbox add owner/repo --list`       | List skills in a repo first    |
+| `skillbox add owner/repo --skill name` | Install specific skill         |
+| `skillbox add <url>`                   | Install from direct URL        |
 
 ## Removing Skills
 
