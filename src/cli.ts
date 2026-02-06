@@ -11,6 +11,7 @@ import { registerList } from "./commands/list.js";
 import { registerMeta } from "./commands/meta.js";
 import { registerProject } from "./commands/project.js";
 import { registerRemove } from "./commands/remove.js";
+import { registerShow } from "./commands/show.js";
 import { registerStatus } from "./commands/status.js";
 import { registerUpdate } from "./commands/update.js";
 
@@ -29,6 +30,7 @@ registerList(program);
 registerMeta(program);
 registerProject(program);
 registerRemove(program);
+registerShow(program);
 registerStatus(program);
 registerUpdate(program);
 
