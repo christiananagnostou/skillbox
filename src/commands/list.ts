@@ -1,6 +1,8 @@
 import chalk from "chalk";
 import type { Command } from "commander";
 import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import terminalLink from "terminal-link";
 import type { AgentId } from "../lib/agents.js";
 import { discoverGlobalSkills } from "../lib/global-skills.js";
@@ -241,6 +243,50 @@ function renderSkillLine(
   return `${base} ${chalk.dim(`[${divergence}]`)}`;
 }
 
+function tildify(absolutePath: string): string {
+  const home = os.homedir();
+  if (absolutePath === home) return "~";
+  if (absolutePath.startsWith(`${home}/`)) {
+    return `~${absolutePath.slice(home.length)}`;
+  }
+  return absolutePath;
+}
+
+function getAgentInstallRoots(
+  skills: SkillEntry[],
+  projectRoot?: string
+): Array<{ agent: string; root: string }> {
+  const rootsByAgent = new Map<string, string>();
+  const targetScope = projectRoot ? "project" : "user";
+  for (const skill of skills) {
+    if (!skill.installs) continue;
+    for (const install of skill.installs) {
+      if (!install.agent) continue;
+      if (install.scope !== targetScope) continue;
+      if (rootsByAgent.has(install.agent)) continue;
+      const dirPath = path.dirname(install.path);
+      const displayPath = projectRoot
+        ? path.relative(projectRoot, dirPath) || "."
+        : tildify(dirPath);
+      rootsByAgent.set(install.agent, displayPath);
+    }
+  }
+  return Array.from(rootsByAgent.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([agent, root]) => ({ agent, root }));
+}
+
+function printAgentInstallTable(
+  agentRoots: Array<{ agent: string; root: string }>,
+  indent: string
+): void {
+  if (agentRoots.length === 0) return;
+  const maxAgentLen = Math.max(...agentRoots.map((entry) => entry.agent.length));
+  for (const { agent, root } of agentRoots) {
+    printInfo(`${indent}${chalk.dim(`${agent.padEnd(maxAgentLen)} → ${root}`)}`);
+  }
+}
+
 function printScopeGroup(group: ScopeGroup, showAgents: boolean): void {
   const label = group.scope === "global" ? "Global Skills" : "Project Skills";
   const totalCount = group.sourceGroups.reduce((sum, g) => sum + g.skills.length, 0);
@@ -257,17 +303,21 @@ function printScopeGroup(group: ScopeGroup, showAgents: boolean): void {
     if (!modalAgents) return null;
     return formatAgentDivergence(agentsBySkill.get(skill) ?? [], modalAgents);
   };
-  const headerSuffix =
-    modalAgents && modalAgents.length > 0 ? chalk.dim(`  — agents: ${modalAgents.join(", ")}`) : "";
 
-  printInfo(`${label} (${totalCount})${headerSuffix}`);
+  printInfo(`${label} (${totalCount})`);
 
   if (group.scope === "project" && group.projectGroups) {
     for (const projectGroup of group.projectGroups) {
       printInfo("");
       printInfo(projectGroup.projectRoot);
 
+      if (showAgents) {
+        const projectSkills = projectGroup.sourceGroups.flatMap((g) => g.skills);
+        printAgentInstallTable(getAgentInstallRoots(projectSkills, projectGroup.projectRoot), "  ");
+      }
+
       for (const sourceGroup of projectGroup.sourceGroups) {
+        printInfo("");
         printInfo(`  ${sourceGroup.source}`);
 
         for (const skill of sourceGroup.skills) {
@@ -280,6 +330,10 @@ function printScopeGroup(group: ScopeGroup, showAgents: boolean): void {
       }
     }
     return;
+  }
+
+  if (showAgents) {
+    printAgentInstallTable(getAgentInstallRoots(allSkills), "  ");
   }
 
   for (const sourceGroup of group.sourceGroups) {

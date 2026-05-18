@@ -92,11 +92,12 @@ Main skill.`;
       });
     });
 
-    it("shows the modal agent set in the scope header", async () => {
+    it("shows a per-agent install table under the scope header", async () => {
       const result = await runCli(["list"]);
 
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toMatch(/agents:\s+claude/);
+      expect(result.stdout).toMatch(/claude\s+→\s+/);
+      expect(result.stdout).toMatch(/[/~].*\/skills/);
     });
 
     it("does not tag skills that match the modal agent set", async () => {
@@ -107,11 +108,11 @@ Main skill.`;
       expect(result.stdout).not.toMatch(/agent-tagged-skill.*\[/);
     });
 
-    it("suppresses the annotation when --agents filter is active", async () => {
+    it("suppresses the install table when --agents filter is active", async () => {
       const result = await runCli(["list", "--agents", "claude"]);
 
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).not.toMatch(/agents:\s+claude/);
+      expect(result.stdout).not.toMatch(/claude\s+→/);
     });
   });
 
