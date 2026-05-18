@@ -182,11 +182,80 @@ function getProjectRoots(skill: SkillWithSubcommands): string[] {
   return Array.from(new Set(roots));
 }
 
-function printScopeGroup(group: ScopeGroup): void {
+function getSkillAgents(skill: SkillEntry): string[] {
+  if (!skill.installs) return [];
+  const agents = new Set<string>();
+  for (const install of skill.installs) {
+    if (install.agent) agents.add(install.agent);
+  }
+  return Array.from(agents).sort();
+}
+
+function getModalAgentSet(skills: SkillEntry[]): string[] | null {
+  const counts = new Map<string, { agents: string[]; count: number }>();
+  for (const skill of skills) {
+    const agents = getSkillAgents(skill);
+    if (agents.length === 0) continue;
+    const key = agents.join(",");
+    const existing = counts.get(key);
+    if (existing) {
+      existing.count++;
+    } else {
+      counts.set(key, { agents, count: 1 });
+    }
+  }
+  if (counts.size === 0) return null;
+  let best: { agents: string[]; count: number } | null = null;
+  for (const entry of counts.values()) {
+    if (
+      !best ||
+      entry.count > best.count ||
+      (entry.count === best.count && entry.agents.length > best.agents.length)
+    ) {
+      best = entry;
+    }
+  }
+  return best?.agents ?? null;
+}
+
+function arraysEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
+}
+
+function formatAgentDivergence(skillAgents: string[], modalAgents: string[]): string | null {
+  if (arraysEqual(skillAgents, modalAgents)) return null;
+  if (skillAgents.length === 0) return "no agents";
+  const isStrictSubset =
+    skillAgents.length < modalAgents.length &&
+    skillAgents.every((agent) => modalAgents.includes(agent));
+  if (isStrictSubset) {
+    return `${skillAgents.join(", ")} only`;
+  }
+  return skillAgents.join(", ");
+}
+
+function renderSkillLine(
+  indent: string,
+  skill: SkillWithSubcommands,
+  modalAgents: string[] | null
+): string {
+  const base = `${indent}${linkSkillName(skill)}`;
+  if (!modalAgents) return base;
+  const divergence = formatAgentDivergence(getSkillAgents(skill), modalAgents);
+  if (!divergence) return base;
+  return `${base} ${chalk.dim(`[${divergence}]`)}`;
+}
+
+function printScopeGroup(group: ScopeGroup, showAgents: boolean): void {
   const label = group.scope === "global" ? "Global Skills" : "Project Skills";
   const totalCount = group.sourceGroups.reduce((sum, g) => sum + g.skills.length, 0);
+  const allSkills = group.sourceGroups.flatMap((g) => g.skills);
+  const modalAgents = showAgents ? getModalAgentSet(allSkills) : null;
+  const headerSuffix =
+    modalAgents && modalAgents.length > 0 ? chalk.dim(`  — agents: ${modalAgents.join(", ")}`) : "";
 
-  printInfo(`${label} (${totalCount})`);
+  printInfo(`${label} (${totalCount})${headerSuffix}`);
 
   if (group.scope === "project" && group.projectGroups) {
     for (const projectGroup of group.projectGroups) {
@@ -197,7 +266,7 @@ function printScopeGroup(group: ScopeGroup): void {
         printInfo(`  ${sourceGroup.source}`);
 
         for (const skill of sourceGroup.skills) {
-          printInfo(`    ${linkSkillName(skill)}`);
+          printInfo(renderSkillLine("    ", skill, modalAgents));
 
           if (skill.subcommands.length > 0) {
             printInfo(`      → ${skill.subcommands.join(", ")}`);
@@ -213,7 +282,7 @@ function printScopeGroup(group: ScopeGroup): void {
     printInfo(`${sourceGroup.source}`);
 
     for (const skill of sourceGroup.skills) {
-      printInfo(`  ${linkSkillName(skill)}`);
+      printInfo(renderSkillLine("  ", skill, modalAgents));
 
       if (skill.subcommands.length > 0) {
         printInfo(`    → ${skill.subcommands.join(", ")}`);
@@ -303,9 +372,10 @@ export function registerList(program: Command): void {
         return;
       }
 
+      const showAgents = !options.agents;
       for (let i = 0; i < scopeGroups.length; i++) {
         if (i > 0) printInfo("");
-        printScopeGroup(scopeGroups[i]);
+        printScopeGroup(scopeGroups[i], showAgents);
       }
     });
 }
