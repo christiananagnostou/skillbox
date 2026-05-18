@@ -191,10 +191,9 @@ function getSkillAgents(skill: SkillEntry): string[] {
   return Array.from(agents).sort();
 }
 
-function getModalAgentSet(skills: SkillEntry[]): string[] | null {
+function getModalAgentSet(agentsBySkill: Map<SkillEntry, string[]>): string[] | null {
   const counts = new Map<string, { agents: string[]; count: number }>();
-  for (const skill of skills) {
-    const agents = getSkillAgents(skill);
+  for (const agents of agentsBySkill.values()) {
     if (agents.length === 0) continue;
     const key = agents.join(",");
     const existing = counts.get(key);
@@ -205,17 +204,14 @@ function getModalAgentSet(skills: SkillEntry[]): string[] | null {
     }
   }
   if (counts.size === 0) return null;
-  let best: { agents: string[]; count: number } | null = null;
-  for (const entry of counts.values()) {
-    if (
-      !best ||
-      entry.count > best.count ||
-      (entry.count === best.count && entry.agents.length > best.agents.length)
-    ) {
-      best = entry;
-    }
-  }
-  return best?.agents ?? null;
+  // Tie-break: prefer the smaller set so fewer skills get tagged as divergent.
+  // Final tie: alphabetical for determinism.
+  const sorted = Array.from(counts.values()).sort((a, b) => {
+    if (a.count !== b.count) return b.count - a.count;
+    if (a.agents.length !== b.agents.length) return a.agents.length - b.agents.length;
+    return a.agents.join(",").localeCompare(b.agents.join(","));
+  });
+  return sorted[0].agents;
 }
 
 function arraysEqual(a: string[], b: string[]): boolean {
@@ -238,11 +234,9 @@ function formatAgentDivergence(skillAgents: string[], modalAgents: string[]): st
 function renderSkillLine(
   indent: string,
   skill: SkillWithSubcommands,
-  modalAgents: string[] | null
+  divergence: string | null
 ): string {
   const base = `${indent}${linkSkillName(skill)}`;
-  if (!modalAgents) return base;
-  const divergence = formatAgentDivergence(getSkillAgents(skill), modalAgents);
   if (!divergence) return base;
   return `${base} ${chalk.dim(`[${divergence}]`)}`;
 }
@@ -251,7 +245,18 @@ function printScopeGroup(group: ScopeGroup, showAgents: boolean): void {
   const label = group.scope === "global" ? "Global Skills" : "Project Skills";
   const totalCount = group.sourceGroups.reduce((sum, g) => sum + g.skills.length, 0);
   const allSkills = group.sourceGroups.flatMap((g) => g.skills);
-  const modalAgents = showAgents ? getModalAgentSet(allSkills) : null;
+
+  const agentsBySkill = new Map<SkillEntry, string[]>();
+  if (showAgents) {
+    for (const skill of allSkills) {
+      agentsBySkill.set(skill, getSkillAgents(skill));
+    }
+  }
+  const modalAgents = showAgents ? getModalAgentSet(agentsBySkill) : null;
+  const divergenceFor = (skill: SkillEntry): string | null => {
+    if (!modalAgents) return null;
+    return formatAgentDivergence(agentsBySkill.get(skill) ?? [], modalAgents);
+  };
   const headerSuffix =
     modalAgents && modalAgents.length > 0 ? chalk.dim(`  — agents: ${modalAgents.join(", ")}`) : "";
 
@@ -266,7 +271,7 @@ function printScopeGroup(group: ScopeGroup, showAgents: boolean): void {
         printInfo(`  ${sourceGroup.source}`);
 
         for (const skill of sourceGroup.skills) {
-          printInfo(renderSkillLine("    ", skill, modalAgents));
+          printInfo(renderSkillLine("    ", skill, divergenceFor(skill)));
 
           if (skill.subcommands.length > 0) {
             printInfo(`      → ${skill.subcommands.join(", ")}`);
@@ -282,7 +287,7 @@ function printScopeGroup(group: ScopeGroup, showAgents: boolean): void {
     printInfo(`${sourceGroup.source}`);
 
     for (const skill of sourceGroup.skills) {
-      printInfo(renderSkillLine("  ", skill, modalAgents));
+      printInfo(renderSkillLine("  ", skill, divergenceFor(skill)));
 
       if (skill.subcommands.length > 0) {
         printInfo(`    → ${skill.subcommands.join(", ")}`);
