@@ -7,16 +7,11 @@ import terminalLink from "terminal-link";
 import { allAgents, type AgentId } from "../lib/agents.js";
 import { discoverGlobalSkills } from "../lib/global-skills.js";
 import { loadIndex } from "../lib/index.js";
+import { isProjectInstall, isUserInstall } from "../lib/installs.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { resolveRuntime } from "../lib/runtime.js";
 import { groupAndSort, sortByName } from "../lib/source-grouping.js";
-
-type SkillInstall = {
-  scope: "user" | "project";
-  agent?: string;
-  path: string;
-  projectRoot?: string;
-};
+import type { SkillInstall } from "../lib/types.js";
 
 type SkillEntry = {
   name: string;
@@ -112,8 +107,8 @@ function groupByScope(skills: SkillWithSubcommands[]): ScopeGroup[] {
   const projectSkills: SkillWithSubcommands[] = [];
 
   for (const skill of skills) {
-    const hasProjectInstall = skill.installs?.some((i) => i.scope === "project");
-    const hasUserInstall = skill.installs?.some((i) => i.scope === "user");
+    const hasProjectInstall = skill.installs?.some(isProjectInstall);
+    const hasUserInstall = skill.installs?.some(isUserInstall);
 
     // A skill can be in both - for now, categorize by where it's installed
     if (hasProjectInstall) {
@@ -178,9 +173,8 @@ function groupBySourceType(
 
 function getProjectRoots(skill: SkillWithSubcommands): string[] {
   const roots = (skill.installs ?? [])
-    .filter((install) => install.scope === "project")
-    .map((install) => install.projectRoot)
-    .filter((root): root is string => Boolean(root));
+    .filter(isProjectInstall)
+    .map((install) => install.projectRoot);
   return Array.from(new Set(roots));
 }
 
@@ -257,12 +251,11 @@ function getAgentInstallRoots(
   projectRoot?: string
 ): Array<{ agent: string; root: string }> {
   const rootsByAgent = new Map<string, string>();
-  const targetScope = projectRoot ? "project" : "user";
+  const matchesScope = projectRoot ? isProjectInstall : isUserInstall;
   for (const skill of skills) {
     if (!skill.installs) continue;
     for (const install of skill.installs) {
-      if (!install.agent) continue;
-      if (install.scope !== targetScope) continue;
+      if (!matchesScope(install)) continue;
       if (rootsByAgent.has(install.agent)) continue;
       const dirPath = path.dirname(install.path);
       const displayPath = projectRoot
@@ -380,13 +373,10 @@ function filterByAgents(skills: SkillEntry[], agents: string[]): SkillEntry[] {
 
 function filterUserScope(skills: SkillEntry[]): SkillEntry[] {
   return skills
-    .filter(
-      (skill) =>
-        skill.installs?.some((install) => install.scope === "user") ?? !skill.installs?.length
-    )
+    .filter((skill) => skill.installs?.some(isUserInstall) ?? !skill.installs?.length)
     .map((skill) => ({
       ...skill,
-      installs: skill.installs?.filter((install) => install.scope === "user"),
+      installs: skill.installs?.filter(isUserInstall),
     }));
 }
 

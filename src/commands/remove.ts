@@ -3,15 +3,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { handleCommandError } from "../lib/command.js";
 import { loadIndex, saveIndex, sortIndex } from "../lib/index.js";
+import { isProjectInstall } from "../lib/installs.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { skillDir } from "../lib/skill-store.js";
+import type { SkillInstall } from "../lib/types.js";
 
-type InstallInfo = {
-  scope: string;
-  agent: string;
-  path: string;
-  projectRoot?: string;
-};
+type InstallInfo = SkillInstall;
 
 async function removePaths(paths: string[]): Promise<void> {
   for (const target of paths) {
@@ -23,7 +20,7 @@ function groupInstallsByScope(installs: InstallInfo[]): Map<string, InstallInfo[
   const groups = new Map<string, InstallInfo[]>();
 
   for (const install of installs) {
-    const key = install.scope === "project" ? `project:${install.projectRoot}` : "user";
+    const key = isProjectInstall(install) ? `project:${install.projectRoot}` : "user";
     const existing = groups.get(key) ?? [];
     existing.push(install);
     groups.set(key, existing);
@@ -70,12 +67,10 @@ export function registerRemove(program: Command): void {
         const projectRoot = options.project ? path.resolve(options.project) : null;
         const installs = skill.installs ?? [];
 
-        const isProjectInstall = (install: (typeof installs)[number]): boolean =>
-          install.scope === "project" &&
-          Boolean(install.projectRoot) &&
-          install.projectRoot === projectRoot;
+        const matchesProject = (install: (typeof installs)[number]): boolean =>
+          isProjectInstall(install) && install.projectRoot === projectRoot;
 
-        const toRemove = projectRoot ? installs.filter(isProjectInstall) : installs;
+        const toRemove = projectRoot ? installs.filter(matchesProject) : installs;
 
         if (projectRoot && toRemove.length === 0) {
           throw new Error(`No installs found for ${name} in ${projectRoot}.`);
@@ -86,7 +81,7 @@ export function registerRemove(program: Command): void {
 
         let removedCanonical = false;
         if (projectRoot) {
-          const remaining = installs.filter((install) => !isProjectInstall(install));
+          const remaining = installs.filter((install) => !matchesProject(install));
           index.skills = index.skills.map((entry) =>
             entry.name === name
               ? { ...entry, installs: remaining.length > 0 ? remaining : undefined }
