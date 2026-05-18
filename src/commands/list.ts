@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import terminalLink from "terminal-link";
-import type { AgentId } from "../lib/agents.js";
+import { allAgents, type AgentId } from "../lib/agents.js";
 import { discoverGlobalSkills } from "../lib/global-skills.js";
 import { loadIndex } from "../lib/index.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
@@ -12,7 +12,7 @@ import { resolveRuntime } from "../lib/runtime.js";
 import { groupAndSort, sortByName } from "../lib/source-grouping.js";
 
 type SkillInstall = {
-  scope: string;
+  scope: "user" | "project";
   agent?: string;
   path: string;
   projectRoot?: string;
@@ -271,8 +271,9 @@ function getAgentInstallRoots(
       rootsByAgent.set(install.agent, displayPath);
     }
   }
+  const orderIndex = new Map(allAgents.map((agent, i) => [agent as string, i]));
   return Array.from(rootsByAgent.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (orderIndex.get(a) ?? Infinity) - (orderIndex.get(b) ?? Infinity))
     .map(([agent, root]) => ({ agent, root }));
 }
 
