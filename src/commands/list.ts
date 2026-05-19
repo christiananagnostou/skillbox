@@ -61,9 +61,7 @@ async function enrichWithSubcommands(skills: SkillEntry[]): Promise<SkillWithSub
 
   for (const skill of skills) {
     const skillPath = getSkillPath(skill);
-    const { subcommands } = skillPath
-      ? await readSkillDirEntries(skillPath)
-      : { subcommands: [] };
+    const { subcommands } = skillPath ? await readSkillDirEntries(skillPath) : { subcommands: [] };
     results.push({ ...skill, subcommands });
   }
 
