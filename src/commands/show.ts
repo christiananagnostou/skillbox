@@ -5,28 +5,7 @@ import path from "node:path";
 import { handleCommandError } from "../lib/command.js";
 import { loadIndex } from "../lib/index.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
-import { readSkillMetadata, skillDir } from "../lib/skill-store.js";
-
-async function detectSubcommands(dir: string): Promise<string[]> {
-  try {
-    const entries = await fs.readdir(dir);
-    return entries
-      .filter((e) => e.endsWith(".md") && e !== "SKILL.md")
-      .map((e) => e.replace(/\.md$/, ""))
-      .sort();
-  } catch {
-    return [];
-  }
-}
-
-async function listExtraFiles(dir: string): Promise<string[]> {
-  try {
-    const entries = await fs.readdir(dir);
-    return entries.filter((e) => e !== "SKILL.md" && e !== "skill.json").sort();
-  } catch {
-    return [];
-  }
-}
+import { readSkillDirEntries, readSkillMetadata, skillDir } from "../lib/skill-store.js";
 
 export function registerShow(program: Command): void {
   program
@@ -53,8 +32,7 @@ export function registerShow(program: Command): void {
         }
 
         const metadata = await readSkillMetadata(name);
-        const subcommands = await detectSubcommands(dir);
-        const extraFiles = await listExtraFiles(dir);
+        const { subcommands, extraFiles } = await readSkillDirEntries(dir);
 
         if (isJsonEnabled(options)) {
           printJson({

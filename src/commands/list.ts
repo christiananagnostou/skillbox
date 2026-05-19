@@ -1,6 +1,5 @@
 import chalk from "chalk";
 import type { Command } from "commander";
-import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import terminalLink from "terminal-link";
@@ -10,6 +9,7 @@ import { loadIndex } from "../lib/index.js";
 import { isProjectInstall, isUserInstall } from "../lib/installs.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { resolveRuntime } from "../lib/runtime.js";
+import { readSkillDirEntries } from "../lib/skill-store.js";
 import { groupAndSort, sortByName } from "../lib/source-grouping.js";
 import type { SkillInstall } from "../lib/types.js";
 
@@ -51,25 +51,6 @@ type SkillWithSubcommands = SkillEntry & {
   subcommands: string[];
 };
 
-async function detectSubcommands(skillPath: string): Promise<string[]> {
-  try {
-    const entries = await fs.readdir(skillPath);
-    const subcommands: string[] = [];
-
-    for (const entry of entries) {
-      if (entry === "SKILL.md") continue;
-      if (!entry.endsWith(".md")) continue;
-
-      const name = entry.replace(/\.md$/, "");
-      subcommands.push(name);
-    }
-
-    return subcommands.sort();
-  } catch {
-    return [];
-  }
-}
-
 function getSkillPath(skill: SkillEntry): string | null {
   if (!skill.installs || skill.installs.length === 0) return null;
   return skill.installs[0].path;
@@ -80,7 +61,9 @@ async function enrichWithSubcommands(skills: SkillEntry[]): Promise<SkillWithSub
 
   for (const skill of skills) {
     const skillPath = getSkillPath(skill);
-    const subcommands = skillPath ? await detectSubcommands(skillPath) : [];
+    const { subcommands } = skillPath
+      ? await readSkillDirEntries(skillPath)
+      : { subcommands: [] };
     results.push({ ...skill, subcommands });
   }
 
