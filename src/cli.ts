@@ -1,5 +1,8 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
 import { Command } from "commander";
+
+const { version } = createRequire(import.meta.url)("../package.json") as { version: string };
 import { registerAdd } from "./commands/add.js";
 import { registerAgent } from "./commands/agent.js";
 import { registerConfig } from "./commands/config.js";
@@ -17,7 +20,7 @@ import { registerUpdate } from "./commands/update.js";
 
 const program = new Command();
 
-program.name("skillbox").description("Local-first, agent-agnostic skills manager").version("0.3.4");
+program.name("skillbox").description("Local-first, agent-agnostic skills manager").version(version);
 
 registerAdd(program);
 registerAgent(program);
