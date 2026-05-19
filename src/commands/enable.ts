@@ -23,13 +23,11 @@ export function registerEnable(program: Command): void {
           throw new Error(`Skill is not disabled: ${name}`);
         }
 
-        // Re-install to all tracked paths
         const installs = skill.installs ?? [];
         const targets = installs.map((i) => i.path);
         const config = await loadConfig();
         const results = await installSkillToTargets(name, targets, config);
 
-        // Clear disabled flag
         delete skill.disabled;
         await saveIndex(sortIndex(index));
 

@@ -22,7 +22,6 @@ export function registerDisable(program: Command): void {
           throw new Error(`Skill already disabled: ${name}`);
         }
 
-        // Remove installed symlinks/copies from agent paths
         const installs = skill.installs ?? [];
         const removed: string[] = [];
 
@@ -31,11 +30,10 @@ export function registerDisable(program: Command): void {
             await fs.rm(install.path, { recursive: true, force: true });
             removed.push(install.path);
           } catch {
-            // Path may already be gone
+            // non-ENOENT errors (e.g. permission denied); skip silently
           }
         }
 
-        // Mark as disabled in index, but keep installs metadata for re-enable
         skill.disabled = true;
         await saveIndex(sortIndex(index));
 
