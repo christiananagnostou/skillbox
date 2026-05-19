@@ -246,28 +246,44 @@ function tildify(absolutePath: string): string {
   return absolutePath;
 }
 
-function getAgentInstallRoots(
+function collectInstallDirsByAgent(
   skills: SkillEntry[],
-  projectRoot?: string
-): Array<{ agent: string; root: string }> {
-  const rootsByAgent = new Map<string, string>();
-  const matchesScope = projectRoot ? isProjectInstall : isUserInstall;
+  predicate: (install: SkillInstall) => boolean
+): Map<string, string> {
+  const dirsByAgent = new Map<string, string>();
   for (const skill of skills) {
     if (!skill.installs) continue;
     for (const install of skill.installs) {
-      if (!matchesScope(install)) continue;
-      if (rootsByAgent.has(install.agent)) continue;
-      const dirPath = path.dirname(install.path);
-      const displayPath = projectRoot
-        ? path.relative(projectRoot, dirPath) || "."
-        : tildify(dirPath);
-      rootsByAgent.set(install.agent, displayPath);
+      if (!predicate(install)) continue;
+      if (dirsByAgent.has(install.agent)) continue;
+      dirsByAgent.set(install.agent, path.dirname(install.path));
     }
   }
+  return dirsByAgent;
+}
+
+function toSortedAgentRoots(
+  dirsByAgent: Map<string, string>,
+  formatDir: (absoluteDir: string) => string
+): Array<{ agent: string; root: string }> {
   const orderIndex = new Map(allAgents.map((agent, i) => [agent as string, i]));
-  return Array.from(rootsByAgent.entries())
+  return Array.from(dirsByAgent.entries())
     .sort(([a], [b]) => (orderIndex.get(a) ?? Infinity) - (orderIndex.get(b) ?? Infinity))
-    .map(([agent, root]) => ({ agent, root }));
+    .map(([agent, dir]) => ({ agent, root: formatDir(dir) }));
+}
+
+function getUserAgentRoots(skills: SkillEntry[]): Array<{ agent: string; root: string }> {
+  return toSortedAgentRoots(collectInstallDirsByAgent(skills, isUserInstall), tildify);
+}
+
+function getProjectAgentRoots(
+  skills: SkillEntry[],
+  projectRoot: string
+): Array<{ agent: string; root: string }> {
+  return toSortedAgentRoots(
+    collectInstallDirsByAgent(skills, isProjectInstall),
+    (dir) => path.relative(projectRoot, dir) || "."
+  );
 }
 
 function printAgentInstallTable(
@@ -307,7 +323,7 @@ function printScopeGroup(group: ScopeGroup, showAgents: boolean): void {
 
       if (showAgents) {
         const projectSkills = projectGroup.sourceGroups.flatMap((g) => g.skills);
-        printAgentInstallTable(getAgentInstallRoots(projectSkills, projectGroup.projectRoot), "  ");
+        printAgentInstallTable(getProjectAgentRoots(projectSkills, projectGroup.projectRoot), "  ");
       }
 
       for (const sourceGroup of projectGroup.sourceGroups) {
@@ -327,7 +343,7 @@ function printScopeGroup(group: ScopeGroup, showAgents: boolean): void {
   }
 
   if (showAgents) {
-    printAgentInstallTable(getAgentInstallRoots(allSkills), "  ");
+    printAgentInstallTable(getUserAgentRoots(allSkills), "  ");
   }
 
   for (const sourceGroup of group.sourceGroups) {

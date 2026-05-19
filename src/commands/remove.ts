@@ -8,16 +8,14 @@ import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
 import { skillDir } from "../lib/skill-store.js";
 import type { SkillInstall } from "../lib/types.js";
 
-type InstallInfo = SkillInstall;
-
 async function removePaths(paths: string[]): Promise<void> {
   for (const target of paths) {
     await fs.rm(target, { recursive: true, force: true });
   }
 }
 
-function groupInstallsByScope(installs: InstallInfo[]): Map<string, InstallInfo[]> {
-  const groups = new Map<string, InstallInfo[]>();
+function groupInstallsByScope(installs: SkillInstall[]): Map<string, SkillInstall[]> {
+  const groups = new Map<string, SkillInstall[]>();
 
   for (const install of installs) {
     const key = isProjectInstall(install) ? `project:${install.projectRoot}` : "user";
@@ -29,7 +27,7 @@ function groupInstallsByScope(installs: InstallInfo[]): Map<string, InstallInfo[
   return groups;
 }
 
-function printRemovedInstalls(installs: InstallInfo[]): void {
+function printRemovedInstalls(installs: SkillInstall[]): void {
   const groups = groupInstallsByScope(installs);
 
   // Sort: user scope first, then projects
@@ -114,7 +112,7 @@ export function registerRemove(program: Command): void {
         if (toRemove.length > 0) {
           printInfo("");
           printInfo("Removed from:");
-          printRemovedInstalls(toRemove as InstallInfo[]);
+          printRemovedInstalls(toRemove);
         }
       } catch (error) {
         handleCommandError(options, "remove", error);
