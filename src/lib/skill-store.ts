@@ -58,6 +58,24 @@ export function hashContent(content: string): string {
  * and writes to the skill store. Returns the data needed for index updates,
  * or null if the skill is invalid (missing description).
  */
+export async function readSkillDirEntries(
+  dir: string
+): Promise<{ subcommands: string[]; extraFiles: string[] }> {
+  try {
+    const entries = await fs.readdir(dir);
+    const subcommands: string[] = [];
+    const extraFiles: string[] = [];
+    for (const e of entries) {
+      if (e === "SKILL.md" || e === "skill.json") continue;
+      if (e.endsWith(".md")) subcommands.push(e.replace(/\.md$/, ""));
+      else extraFiles.push(e);
+    }
+    return { subcommands: subcommands.sort(), extraFiles: extraFiles.sort() };
+  } catch {
+    return { subcommands: [], extraFiles: [] };
+  }
+}
+
 export async function importSkillFromDir(skillFile: string): Promise<ImportedSkillData | null> {
   const markdown = await fs.readFile(skillFile, "utf8");
   const parsed = parseSkillMarkdown(markdown);
