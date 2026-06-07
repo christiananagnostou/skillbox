@@ -4,27 +4,33 @@ import { registerAdd } from "./commands/add.js";
 import { registerAgent } from "./commands/agent.js";
 import { registerConfig } from "./commands/config.js";
 import { registerConvert } from "./commands/convert.js";
+import { registerDisable } from "./commands/disable.js";
+import { registerEnable } from "./commands/enable.js";
 import { registerImport } from "./commands/import.js";
 import { registerList } from "./commands/list.js";
 import { registerMeta } from "./commands/meta.js";
 import { registerProject } from "./commands/project.js";
 import { registerRemove } from "./commands/remove.js";
+import { registerShow } from "./commands/show.js";
 import { registerStatus } from "./commands/status.js";
 import { registerUpdate } from "./commands/update.js";
 
 const program = new Command();
 
-program.name("skillbox").description("Local-first, agent-agnostic skills manager").version("0.3.3");
+program.name("skillbox").description("Local-first, agent-agnostic skills manager").version("0.3.4");
 
 registerAdd(program);
 registerAgent(program);
 registerConfig(program);
 registerConvert(program);
+registerDisable(program);
+registerEnable(program);
 registerImport(program);
 registerList(program);
 registerMeta(program);
 registerProject(program);
 registerRemove(program);
+registerShow(program);
 registerStatus(program);
 registerUpdate(program);
 

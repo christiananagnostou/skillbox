@@ -1,9 +1,13 @@
 import type { IndexedSkill, SkillInstall } from "./types.js";
 
-function isProjectInstall(
+export function isProjectInstall(
   install: SkillInstall
 ): install is SkillInstall & { projectRoot: string } {
   return install.scope === "project" && Boolean(install.projectRoot);
+}
+
+export function isUserInstall(install: SkillInstall): install is SkillInstall & { scope: "user" } {
+  return install.scope === "user";
 }
 
 export function collectProjectSkills(skills: IndexedSkill[]): Map<string, string[]> {

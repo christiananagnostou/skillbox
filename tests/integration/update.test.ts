@@ -85,4 +85,68 @@ describe("update command", () => {
       expect(updated?.status).not.toBe("skipped");
     });
   });
+
+  describe("progress output (human-readable)", () => {
+    beforeEach(async () => {
+      await testEnv.installLocalSkill("progress-test-skill", VALID_SKILL_MARKDOWN, {
+        description: "A skill for testing progress output",
+      });
+    });
+
+    it("shows header with skill count", async () => {
+      const result = await runCli(["update"]);
+
+      expect(result.stdout).toMatch(/Updating \d+ skills?\.\.\./);
+    });
+
+    it("shows dash indicator for skipped local skills", async () => {
+      const result = await runCli(["update"]);
+
+      expect(result.stdout).toMatch(/^\s+-\s+progress-test-skill \(skipped\)/m);
+    });
+
+    it("shows summary line", async () => {
+      const result = await runCli(["update"]);
+
+      expect(result.stdout).toMatch(/No trackable skills to update\.|Updated \d+ of \d+/);
+    });
+
+    it("shows checkmark for successful updates", async () => {
+      // Add a URL skill first
+      const addResult = await runCli(["add", TEST_URLS.validSkill, "--name", "url-progress-skill"]);
+
+      if (addResult.exitCode !== 0) {
+        // Network issue, skip this test
+        expect(addResult.stdout + addResult.stderr).toMatch(/error|failed|rate|network|fetch/i);
+        return;
+      }
+
+      const result = await runCli(["update", "url-progress-skill"]);
+
+      if (result.exitCode === 0) {
+        expect(result.stdout).toMatch(/✓\s+url-progress-skill/);
+      }
+    });
+
+    it("shows X indicator for failed updates", async () => {
+      // Add a skill with a URL that will fail
+      await testEnv.addSkillToIndex({
+        name: "broken-url-skill",
+        source: { type: "url", url: "https://invalid.example.com/nonexistent.md" },
+      });
+
+      const result = await runCli(["update", "broken-url-skill"]);
+
+      expect(result.stdout).toMatch(/✗\s+broken-url-skill/);
+    });
+
+    it("does not show progress output in JSON mode", async () => {
+      const result = await runCli(["update", "--json"]);
+
+      expect(result.stdout).not.toMatch(/Updating \d+ skills?\.\.\./);
+      expect(result.stdout).not.toMatch(/[✓✗-]\s+progress-test-skill/);
+      // Should be valid JSON
+      expect(() => JSON.parse(result.stdout)).not.toThrow();
+    });
+  });
 });

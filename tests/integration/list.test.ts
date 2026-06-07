@@ -85,6 +85,37 @@ Main skill.`;
     });
   });
 
+  describe("agent annotation", () => {
+    beforeEach(async () => {
+      await testEnv.installLocalSkill("agent-tagged-skill", VALID_SKILL_MARKDOWN, {
+        description: "A skill for agent annotation",
+      });
+    });
+
+    it("shows a per-agent install table under the scope header", async () => {
+      const result = await runCli(["list"]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toMatch(/claude\s+→\s+/);
+      expect(result.stdout).toMatch(/[/~].*\/skills/);
+    });
+
+    it("does not tag skills that match the modal agent set", async () => {
+      const result = await runCli(["list"]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("agent-tagged-skill");
+      expect(result.stdout).not.toMatch(/agent-tagged-skill.*\[/);
+    });
+
+    it("suppresses the install table when --agents filter is active", async () => {
+      const result = await runCli(["list", "--agents", "claude"]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).not.toMatch(/claude\s+→/);
+    });
+  });
+
   describe("filtering", () => {
     it("filters by --global flag", async () => {
       await testEnv.installLocalSkill("user-list-skill", VALID_SKILL_MARKDOWN, {

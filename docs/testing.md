@@ -13,6 +13,7 @@ npm link
 ```
 
 Verify installation:
+
 ```bash
 skillbox --version
 ```
@@ -21,23 +22,23 @@ skillbox --version
 
 All commands and flags that must be tested:
 
-| Command | Flags |
-|---------|-------|
-| `add <url>` | `--name`, `--global`, `--agents`, `--skill`, `--list`, `--json` |
-| `remove <name>` | `--project`, `--json` |
-| `update [name]` | `--project`, `--json` |
-| `list` | `--json`, `--global`, `--agents` |
-| `import [path]` | `--global`, `--agents`, `--json` |
-| `status` | `--json` |
-| `config get` | `--json` |
-| `config set` | `--default-agent`, `--add-agent`, `--default-scope`, `--install-mode`, `--json` |
-| `project add <path>` | `--agent-path`, `--json` |
-| `project list` | `--json` |
-| `project inspect <path>` | `--json` |
-| `project sync <path>` | `--json` |
-| `meta set <name>` | `--category`, `--tag`, `--namespace`, `--json` |
-| `convert <url>` | `--name`, `--output`, `--agent`, `--json` |
-| `agent` | `--json` |
+| Command                  | Flags                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------- |
+| `add <url>`              | `--name`, `--global`, `--agents`, `--skill`, `--list`, `--json`                 |
+| `remove <name>`          | `--project`, `--json`                                                           |
+| `update [name]`          | `--project`, `--json`                                                           |
+| `list`                   | `--json`, `--global`, `--agents`                                                |
+| `import [path]`          | `--global`, `--agents`, `--json`                                                |
+| `status`                 | `--json`                                                                        |
+| `config get`             | `--json`                                                                        |
+| `config set`             | `--default-agent`, `--add-agent`, `--default-scope`, `--install-mode`, `--json` |
+| `project add <path>`     | `--agent-path`, `--json`                                                        |
+| `project list`           | `--json`                                                                        |
+| `project inspect <path>` | `--json`                                                                        |
+| `project sync <path>`    | `--json`                                                                        |
+| `meta set <name>`        | `--category`, `--tag`, `--namespace`, `--json`                                  |
+| `convert <url>`          | `--name`, `--output`, `--agent`, `--json`                                       |
+| `agent`                  | `--json`                                                                        |
 
 ## Test Suite
 
@@ -58,6 +59,7 @@ skillbox agent --json
 ```
 
 **Expected:**
+
 - Config shows `defaultAgents`, `defaultScope`, `installMode`
 - List shows skills without duplicates
 - Each skill has correct `agent` field (not "unknown")
@@ -81,6 +83,7 @@ ls -la ~/.claude/skills/web-design-guidelines
 ```
 
 **Expected:**
+
 - `--list` shows available skills in repo
 - Skill installs successfully
 - Appears in list with `[git]` source type
@@ -98,6 +101,7 @@ ls -la ~/.claude/skills/vercel-deploy-claimable
 ```
 
 **Expected:**
+
 - Skill installs from URL
 - Appears in list with `[url]` source type
 - Symlink points to `~/.config/skillbox/skills/<skillname>`
@@ -117,6 +121,7 @@ skillbox remove my-custom-name
 ```
 
 **Expected:**
+
 - Skill installed with custom name `my-custom-name`
 - Symlink created at `~/.claude/skills/my-custom-name`
 
@@ -134,6 +139,7 @@ skillbox remove react-best-practices
 ```
 
 **Expected:**
+
 - Skill installed to user scope
 - Install path shows `scope: "user"`
 
@@ -151,6 +157,7 @@ skillbox remove react-best-practices
 ```
 
 **Expected:**
+
 - Skill installed only to specified agent paths
 - Install shows `agent: "claude"`
 
@@ -168,6 +175,7 @@ ls -la ~/.claude/skills/web-design-guidelines
 ```
 
 **Expected:**
+
 - Returns success with list of updated skills
 - Git/URL skills fetch latest content
 - Symlinks preserved after update
@@ -191,6 +199,7 @@ rm -rf /tmp/test-project
 ```
 
 **Expected:**
+
 - Only project-scoped installs are updated
 - User-scoped installs unchanged
 
@@ -206,6 +215,7 @@ ls ~/.claude/skills/web-design-guidelines 2>/dev/null || echo "Symlink removed"
 ```
 
 **Expected:**
+
 - Skill removed from index
 - Skill removed from agent folders
 - Symlink deleted
@@ -236,6 +246,7 @@ rm -rf /tmp/test-project
 ```
 
 **Expected:**
+
 - Only project install removed
 - User-scoped install preserved
 
@@ -250,6 +261,7 @@ skillbox list
 ```
 
 **Expected:**
+
 - `--global` shows only user-scoped skills
 - Project skills not shown
 
@@ -264,6 +276,7 @@ skillbox list --agents claude,cursor
 ```
 
 **Expected:**
+
 - Only shows skills installed to specified agents
 - Multiple agents comma-separated
 
@@ -295,6 +308,7 @@ rm -rf /tmp/skillbox-test
 ```
 
 **Expected:**
+
 - Import succeeds with skill name and path
 - Skill appears in list with `[local]` source
 
@@ -326,6 +340,7 @@ rm -rf ~/.claude/skills/untracked-test-skill
 ```
 
 **Expected:**
+
 - `imported` contains new skill
 - `skipped` contains already-tracked skills
 - Respects `defaultAgents` config (only scans configured agent paths)
@@ -353,6 +368,7 @@ rm -rf ~/.claude/skills/agent-filter-test
 ```
 
 **Expected:**
+
 - Only specified agent paths scanned
 - Skill imported with correct agent
 
@@ -386,6 +402,7 @@ rmdir .claude 2>/dev/null
 ```
 
 **Expected:**
+
 - Import succeeds
 - Skill appears in list
 
@@ -416,6 +433,7 @@ skillbox config set --default-scope user --install-mode symlink --json
 ```
 
 **Expected:**
+
 - Each setting updates correctly
 - `--add-agent` appends to list
 - `--default-agent` replaces list
@@ -456,6 +474,7 @@ rm -rf /tmp/test-project
 ```
 
 **Expected:**
+
 - `project add` registers project and discovers skills in skills/ directory
 - `project list` shows all registered projects with skill counts
 - `project inspect` shows project details and skills
@@ -476,6 +495,7 @@ rm -rf /tmp/test-project
 ```
 
 **Expected:**
+
 - Custom agent path registered for project
 - Shows in project inspect output
 
@@ -498,6 +518,7 @@ skillbox remove web-design-guidelines
 ```
 
 **Expected:**
+
 - Category, tags, namespace saved to skill metadata
 - Metadata persists in skill.json
 
@@ -512,6 +533,7 @@ skillbox convert 'https://example.com/some-doc' --agent --json
 ```
 
 **Expected:**
+
 - Creates skill structure in output directory
 - `--agent` flag triggers agent-assisted conversion
 
@@ -531,6 +553,7 @@ skillbox list
 ```
 
 **Expected:**
+
 - If `defaultAgents: ["claude"]`, only claude paths are scanned
 - No duplicate skills in output
 
@@ -546,6 +569,7 @@ skillbox list
 ```
 
 **Expected:**
+
 - Skills with multiple .md files show `→ subcommand1, subcommand2, ...`
 - Only SKILL.md excluded from subcommand list
 

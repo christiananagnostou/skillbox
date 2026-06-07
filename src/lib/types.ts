@@ -33,6 +33,7 @@ export type IndexedSkill = {
   categories?: string[];
   tags?: string[];
   installs?: SkillInstall[];
+  disabled?: boolean;
 };
 
 export type SkillInstallScope = "user" | "project";
