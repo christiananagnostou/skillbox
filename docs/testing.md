@@ -621,7 +621,7 @@ skillbox add vercel-labs/agent-skills --list
 
 ## CI Notes
 
-- Tests require Node 22+
+- Tests require Node 22.12+
 - Tests modify `~/.config/skillbox/index.json`
 - Tests create/remove files in `~/.claude/skills/`
 - Network access required for repo/URL tests
