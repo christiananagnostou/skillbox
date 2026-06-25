@@ -16,3 +16,7 @@ export function skillboxIndexPath(): string {
 export function skillboxProjectsPath(): string {
   return path.join(skillboxRoot(), "projects.json");
 }
+
+export function skillboxTmpDir(): string {
+  return path.join(skillboxRoot(), "tmp");
+}

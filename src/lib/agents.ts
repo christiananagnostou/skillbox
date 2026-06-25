@@ -17,14 +17,8 @@ const agentSet = new Set<string>(allAgents);
 export function agentPaths(projectRoot: string): Record<AgentId, AgentPathMap> {
   return {
     opencode: {
-      project: [
-        path.join(projectRoot, ".opencode", "skills"),
-        path.join(projectRoot, ".claude", "skills"),
-      ],
-      user: [
-        path.join(home, ".config", "opencode", "skills"),
-        path.join(home, ".claude", "skills"),
-      ],
+      project: [path.join(projectRoot, ".opencode", "skills")],
+      user: [path.join(home, ".config", "opencode", "skills")],
     },
     claude: {
       project: [path.join(projectRoot, ".claude", "skills")],

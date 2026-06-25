@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { skillboxRoot } from "./paths.js";
+import { skillboxRoot, skillboxTmpDir } from "./paths.js";
 
 export type SkillboxConfig = {
   version: 1;
@@ -40,6 +40,7 @@ export async function loadConfig(): Promise<SkillboxConfig> {
 
 export async function saveConfig(config: SkillboxConfig): Promise<void> {
   await fs.mkdir(skillboxRoot(), { recursive: true });
+  await fs.mkdir(skillboxTmpDir(), { recursive: true });
   const json = JSON.stringify(config, null, 2);
   await fs.writeFile(configPath(), `${json}\n`, "utf8");
 }

@@ -47,6 +47,7 @@ export type InstallResult = {
   path: string;
   mode: "symlink" | "copy" | "skipped";
   error?: string;
+  fallbackCopy?: boolean;
 };
 
 export function buildSymlinkWarning(agent: string, results: InstallResult[]): string[] {
@@ -59,6 +60,12 @@ export function buildSymlinkWarning(agent: string, results: InstallResult[]): st
   for (const result of skipped) {
     const skillName = path.basename(result.path);
     const isExists = result.error?.includes("EEXIST");
+    if (result.fallbackCopy) {
+      warnings.push(
+        `  ⚠ ${skillName} (${agent}): symlink not permitted, copied instead (set installMode=copy to silence)`
+      );
+      continue;
+    }
     if (isExists) {
       warnings.push(
         `  ⚠ ${skillName} (${agent}): already exists at target, remove manually or use --install-mode copy`
@@ -83,11 +90,18 @@ export async function installSkillToTargets(
 
     if (config.installMode === "symlink") {
       try {
-        const status = await createSymlink(sourceDir, targetDir);
-        results.push({ path: targetDir, mode: status === "exists" ? "symlink" : "symlink" });
+        await createSymlink(sourceDir, targetDir);
+        results.push({ path: targetDir, mode: "symlink" });
       } catch (error) {
         const message = getErrorMessage(error, "unknown error");
-        results.push({ path: targetDir, mode: "skipped", error: message });
+        const code = error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
+        if (code === "EPERM") {
+          await ensureDir(targetDir);
+          await copyFiles(sourceDir, targetDir);
+          results.push({ path: targetDir, mode: "copy", fallbackCopy: true, error: message });
+        } else {
+          results.push({ path: targetDir, mode: "skipped", error: message });
+        }
       }
       continue;
     }

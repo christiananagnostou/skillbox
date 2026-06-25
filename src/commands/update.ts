@@ -37,7 +37,7 @@ type SourceGroup = {
 };
 
 // Sort sources: url first, then git (trackable sources first)
-const UPDATE_SOURCE_ORDER = ["url", "git", "local"];
+const UPDATE_SOURCE_ORDER = ["url", "git", "local", "convert"];
 
 function groupBySource(results: UpdateResult[]): SourceGroup[] {
   const grouped = groupAndSort(results, (r) => r.source, UPDATE_SOURCE_ORDER, sortByName);
@@ -233,7 +233,9 @@ export function registerUpdate(program: Command): void {
         const totalUpdated = results.filter((r) => r.status === "updated").length;
         const totalFailed = results.filter((r) => r.status === "failed").length;
         const totalSkipped = results.filter((r) => r.status === "skipped").length;
-        const totalTrackable = results.filter((r) => r.source !== "local").length;
+        const totalTrackable = results.filter(
+          (r) => r.source !== "local" && r.source !== "convert"
+        ).length;
 
         if (isJsonEnabled(options)) {
           printJson({

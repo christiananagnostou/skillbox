@@ -1,4 +1,4 @@
-export type SkillSourceType = "url" | "git" | "local";
+export type SkillSourceType = "url" | "git" | "local" | "convert";
 
 export type SkillSource = {
   type: SkillSourceType;
@@ -6,6 +6,7 @@ export type SkillSource = {
   repo?: string;
   path?: string;
   ref?: string;
+  value?: string;
 };
 
 export type SkillMetadata = {
