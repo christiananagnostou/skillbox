@@ -128,10 +128,12 @@ Each project entry includes:
 ## Update Detection
 
 - URL sources: hash remote content and compare to local checksum.
-- Git sources: store commit hash and compare to remote HEAD.
+- Git sources: fetch remote `SKILL.md` (same path resolution as `update`) and compare SHA-256 to the local checksum. Commit-hash tracking is deferred; see `docs/masterplan.md`.
 - Local-only sources: mark as manual (no update checks).
 
-Status always checks the network (no cache by default). A cache may be added later.
+Status always checks the network for trackable sources (no cache by default). A cache may be added later.
+
+Post-v1 priorities and open gaps live in `docs/masterplan.md`.
 
 ## Sync Strategy
 
