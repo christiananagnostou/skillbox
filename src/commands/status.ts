@@ -1,20 +1,9 @@
 import type { Command } from "commander";
 import { handleCommandError } from "../lib/command.js";
-import { fetchText } from "../lib/fetcher.js";
 import { loadIndex, saveIndex } from "../lib/index.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
-import { hashContent } from "../lib/skill-store.js";
 import { groupAndSort, sortByName } from "../lib/source-grouping.js";
-
-type SkillStatus = {
-  name: string;
-  source: string;
-  trackable: boolean;
-  outdated: boolean;
-  localChecksum: string;
-  remoteChecksum?: string;
-  error?: string;
-};
+import { checkSkillStatus, type SkillStatus } from "../lib/status-check.js";
 
 type SourceGroup = {
   source: string;
@@ -23,48 +12,6 @@ type SourceGroup = {
   outdatedCount: number;
   upToDateCount: number;
 };
-
-async function checkSkillStatus(skill: {
-  name: string;
-  source: { type: string; url?: string };
-  checksum: string;
-}): Promise<SkillStatus> {
-  const isTrackable = skill.source.type === "url" || skill.source.type === "git";
-
-  if (!isTrackable || skill.source.type !== "url" || !skill.source.url) {
-    return {
-      name: skill.name,
-      source: skill.source.type,
-      trackable: isTrackable,
-      outdated: false,
-      localChecksum: skill.checksum,
-    };
-  }
-
-  try {
-    const remoteText = await fetchText(skill.source.url);
-    const remoteChecksum = hashContent(remoteText);
-    const outdated = remoteChecksum !== skill.checksum;
-
-    return {
-      name: skill.name,
-      source: skill.source.type,
-      trackable: true,
-      outdated,
-      localChecksum: skill.checksum,
-      remoteChecksum,
-    };
-  } catch (err) {
-    return {
-      name: skill.name,
-      source: skill.source.type,
-      trackable: true,
-      outdated: false,
-      localChecksum: skill.checksum,
-      error: err instanceof Error ? err.message : "Failed to check",
-    };
-  }
-}
 
 // Sort sources: url first, then git, then local (for status command - trackable first)
 const STATUS_SOURCE_ORDER = ["url", "git", "local"];

@@ -83,4 +83,35 @@ describe("status command", () => {
       expect(localGroup?.trackable).toBe(false);
     });
   });
+
+  describe("with git skills missing repo metadata", () => {
+    beforeEach(async () => {
+      await testEnv.addSkillToIndex({
+        name: "git-missing-repo",
+        source: { type: "git" },
+        checksum: "stale",
+      });
+    });
+
+    it("marks git skills trackable and surfaces metadata errors", async () => {
+      const { result, data } = await runCliJson<{
+        data: {
+          skills: Array<{
+            name: string;
+            source: string;
+            trackable: boolean;
+            outdated: boolean;
+            error?: string;
+          }>;
+        };
+      }>(["status"]);
+
+      expect(result.exitCode).toBe(0);
+      const skill = data?.data.skills.find((entry) => entry.name === "git-missing-repo");
+      expect(skill?.source).toBe("git");
+      expect(skill?.trackable).toBe(true);
+      expect(skill?.outdated).toBe(false);
+      expect(skill?.error).toMatch(/Missing repo/i);
+    });
+  });
 });
