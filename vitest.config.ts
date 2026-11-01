@@ -9,7 +9,7 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     pool: "forks",
-    isolate: false,
+    isolate: true,
     setupFiles: ["tests/setup.ts"],
   },
 });

@@ -21,7 +21,18 @@ export async function runCli(args: string[], options: CliOptions = {}): Promise<
 
   const result = await execa("node", [CLI_PATH, ...args], {
     cwd,
-    env: { ...process.env, ...env, FORCE_COLOR: "0", NO_COLOR: "1" },
+    env: {
+      ...Object.fromEntries(
+        Object.entries(process.env).filter(([key]) => !/^(GH_|GITHUB_)/.test(key))
+      ),
+      GITHUB_TOKEN: "",
+      GH_TOKEN: "",
+      GH_CONFIG_DIR: path.join(process.env.HOME ?? process.env.USERPROFILE ?? ".", ".config", "gh"),
+      ...env,
+      FORCE_COLOR: "0",
+      NO_COLOR: "1",
+    },
+    extendEnv: false,
     timeout,
     reject: false,
   });

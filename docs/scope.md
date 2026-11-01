@@ -2,12 +2,13 @@
 
 Skillbox supports two scopes:
 
-- Project scope (default): skills are installed in project-specific agent folders.
-- User scope (global): skills are installed in user-level agent folders.
+- Project scope: skills are installed in project-specific agent folders.
+- User scope (global, factory default): skills are installed in user-level agent folders.
 
 ## Defaults
 
-- Running skillbox inside a project installs into project scope.
+- The configured `defaultScope` chooses the install scope; the factory default is `user`.
+- With `defaultScope` set to `project`, the current project determines installation locations.
 - Passing --global installs into user scope.
 
 ## Canonical Store
@@ -33,18 +34,13 @@ Each project entry includes:
 - project root path
 - agent path overrides
 - installed skills
-- optional link-to-global flag
 
-## Linking Project Skills to Global
+## Shared content, separate install locations
 
-Project skills are separate by default. A project can optionally link to the global canonical store for automatic updates. This allows:
-
-- Shared sources, but separate project install locations
-- Global update workflow without per-project fetch
-
-Implementation note:
-
-- A link stores a pointer to the canonical store and syncs from it.
+Every installation of a named skill uses the same user-level canonical source.
+Symlink installs point directly at that directory; copy installs hold separate copies
+that Skillbox synchronizes. Project scope selects installation locations, not an independent
+version of the skill.
 
 ## Precedence (Agent-Side)
 
@@ -54,3 +50,10 @@ Some agents apply precedence rules (e.g., project overrides user). Skillbox does
 
 - --global: target user scope
 - --agents: override default agents for install/sync
+
+## Updating shared content
+
+Canonical content is shared by all installs of a skill. `update --project PATH` skips skills
+that also have installs outside that project, because changing the canonical directory would
+otherwise change other scopes through their symlinks. Update without `--project` to update
+shared content intentionally. Disabled skills are always skipped.

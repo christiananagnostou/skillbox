@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 const GITHUB_HOSTS = ["api.github.com", "raw.githubusercontent.com"];
 
@@ -14,8 +14,11 @@ function getGitHubToken(): string | null {
   } else {
     try {
       cachedToken =
-        execSync("gh auth token", { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }).trim() ||
-        null;
+        execFileSync("gh", ["auth", "token", "--hostname", "github.com"], {
+          encoding: "utf8",
+          stdio: ["pipe", "pipe", "pipe"],
+          timeout: 5000,
+        }).trim() || null;
     } catch {
       cachedToken = null;
     }
@@ -25,26 +28,52 @@ function getGitHubToken(): string | null {
 
 function isGitHubUrl(url: string): boolean {
   try {
-    const { host } = new URL(url);
-    return GITHUB_HOSTS.includes(host);
+    const { host, protocol } = new URL(url);
+    return protocol === "https:" && GITHUB_HOSTS.includes(host);
   } catch {
     return false;
   }
 }
 
-export async function fetchText(url: string): Promise<string> {
-  const headers: Record<string, string> = {};
+async function fetchResponse(url: string): Promise<Response> {
+  let currentUrl = new URL(url);
+  const initialOrigin = currentUrl.origin;
+  let allowCredentials = true;
+  const signal = AbortSignal.timeout(30000);
 
-  if (isGitHubUrl(url)) {
-    const token = getGitHubToken();
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
+  for (let redirects = 0; redirects <= 5; redirects++) {
+    if (currentUrl.protocol !== "https:" && currentUrl.protocol !== "http:") {
+      throw new Error("Only HTTP and HTTPS source URLs are supported.");
     }
+    const headers: Record<string, string> = {};
+    if (allowCredentials && isGitHubUrl(currentUrl.href)) {
+      const token = getGitHubToken();
+      if (token) headers.Authorization = `Bearer ${token}`;
+    }
+    const response = await fetch(currentUrl.href, { headers, signal, redirect: "manual" });
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      const location = response.headers.get("location");
+      await response.body?.cancel();
+      if (!location) throw new Error("Source redirect is missing a Location header.");
+      if (redirects === 5) throw new Error("Source exceeded the maximum of five redirects.");
+      const nextUrl = new URL(location, currentUrl);
+      // Once a redirect crosses origins, credentials stay disabled for the entire chain.
+      allowCredentials = allowCredentials && nextUrl.origin === initialOrigin;
+      currentUrl = nextUrl;
+      continue;
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+    }
+    return response;
   }
+  throw new Error("Source exceeded the maximum of five redirects.");
+}
 
-  const response = await fetch(url, { headers });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
-  }
-  return response.text();
+export async function fetchText(url: string): Promise<string> {
+  return (await fetchResponse(url)).text();
+}
+
+export async function fetchBytes(url: string): Promise<Uint8Array> {
+  return new Uint8Array(await (await fetchResponse(url)).arrayBuffer());
 }

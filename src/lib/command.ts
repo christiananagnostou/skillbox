@@ -9,6 +9,7 @@ export function handleCommandError(
   command: string,
   error: unknown
 ): void {
+  process.exitCode = 1;
   const message = getErrorMessage(error);
   if (isJsonEnabled(options)) {
     printJson({ ok: false, command, error: { message } });

@@ -1,7 +1,11 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fetchText } from "./fetcher.js";
+import { fetchBytes, fetchText } from "./fetcher.js";
 import { buildRawUrl, fetchJson, parseRepoRef, type RepoRef } from "./github.js";
+import type { SkillMetadata } from "./types.js";
+import { writeManagedManifest } from "./managed-manifest.js";
+import { publishDirectory } from "./directory-publish.js";
 import { ensureSkillsDir, skillDir } from "./skill-store.js";
 
 export type RepoSkill = {
@@ -17,6 +21,7 @@ type TreeEntry = {
 
 type TreeResponse = {
   tree: TreeEntry[];
+  truncated?: boolean;
 };
 
 const SKILL_ROOTS = [
@@ -32,7 +37,7 @@ const SKILL_ROOTS = [
 ];
 
 function buildTreeUrl(ref: RepoRef): string {
-  return `https://api.github.com/repos/${ref.owner}/${ref.repo}/git/trees/${ref.ref}?recursive=1`;
+  return `https://api.github.com/repos/${ref.owner}/${ref.repo}/git/trees/${encodeURIComponent(ref.ref)}?recursive=1`;
 }
 
 function normalizeSkillPath(filePath: string, basePath?: string): RepoSkill | null {
@@ -99,6 +104,8 @@ export async function listRepoSkills(
   const normalized = await normalizeRepoRef(ref);
 
   const tree = await fetchJson<TreeResponse>(buildTreeUrl(normalized));
+  if (tree.truncated)
+    throw new Error("Repository tree is truncated; refusing incomplete skill discovery.");
   const includeAll = normalized.repo.toLowerCase() === "skills" && !normalized.path;
   const skills = filterSkills(tree.tree, normalized.path, includeAll);
 
@@ -115,6 +122,8 @@ export async function listRepoFiles(
   basePath?: string
 ): Promise<string[]> {
   const tree = await fetchJson<TreeResponse>(buildTreeUrl(ref));
+  if (tree.truncated)
+    throw new Error("Repository tree is truncated; refusing incomplete skill update.");
   const prefix = basePath ? [basePath, skill.path].filter(Boolean).join("/") : skill.path;
   const files = tree.tree
     .filter((entry) => entry.type === "blob")
@@ -132,11 +141,13 @@ export async function fetchRepoFile(ref: RepoRef, filePath: string): Promise<str
 export async function writeRepoSkillDirectory(
   ref: RepoRef,
   skillPath: string,
-  skillName: string
+  skillName: string,
+  metadata?: SkillMetadata
 ): Promise<void> {
+  const snapshot = await resolveRepoSnapshot(ref);
   const normalizedSkillPath = skillPath.replace(/\/$/, "");
   const files = await listRepoFiles(
-    ref,
+    snapshot,
     {
       name: skillName,
       path: normalizedSkillPath,
@@ -146,15 +157,38 @@ export async function writeRepoSkillDirectory(
   );
   const targetDir = skillDir(skillName);
   await ensureSkillsDir();
-  await fs.mkdir(targetDir, { recursive: true });
-
-  for (const file of files) {
-    const filePath = ref.path ? `${ref.path}/${file}` : file;
-    const content = await fetchRepoFile(ref, filePath);
-    const relative = normalizedSkillPath ? file.replace(`${normalizedSkillPath}/`, "") : file;
-    const targetPath = path.join(targetDir, relative);
-    await fs.mkdir(path.dirname(targetPath), { recursive: true });
-    await fs.writeFile(targetPath, content, "utf8");
+  const staging = await fs.mkdtemp(path.join(path.dirname(targetDir), ".skillbox-stage-"));
+  try {
+    for (const file of files) {
+      const filePath = ref.path ? `${ref.path}/${file}` : file;
+      const relative = normalizedSkillPath ? file.slice(normalizedSkillPath.length + 1) : file;
+      // Git paths are untrusted input and must stay inside the staging directory.
+      if (
+        !relative ||
+        relative.split(/[\\/]/).some((part) => part === ".." || part === ".") ||
+        path.isAbsolute(relative) ||
+        relative.includes("\\")
+      ) {
+        throw new Error(`Unsafe repository file path: ${file}`);
+      }
+      if (relative === "skill.json" || relative === ".skillbox-manifest.json") continue;
+      const content = await fetchBytes(buildRawUrl(snapshot, filePath));
+      const targetPath = path.join(staging, relative);
+      await fs.mkdir(path.dirname(targetPath), { recursive: true });
+      await fs.writeFile(targetPath, content);
+    }
+    await fs.access(path.join(staging, "SKILL.md"));
+    if (metadata) {
+      await fs.writeFile(
+        path.join(staging, "skill.json"),
+        `${JSON.stringify(metadata, null, 2)}\n`,
+        "utf8"
+      );
+    }
+    await writeManagedManifest(staging);
+    await publishDirectory(staging, targetDir);
+  } finally {
+    await fs.rm(staging, { recursive: true, force: true });
   }
 }
 
@@ -170,4 +204,51 @@ export async function normalizeRepoRef(ref: RepoRef): Promise<RepoRef> {
     }
     throw new Error("Unable to resolve repository ref.");
   }
+}
+
+/** Resolve a tracking branch or tag once so all files come from one commit. */
+export async function resolveRepoSnapshot(ref: RepoRef): Promise<RepoRef> {
+  if (/^[a-f0-9]{40}$/i.test(ref.ref)) return ref;
+  const commit = await fetchJson<{ sha: string }>(
+    `https://api.github.com/repos/${ref.owner}/${ref.repo}/commits/${encodeURIComponent(ref.ref)}`
+  );
+  if (!/^[a-f0-9]{40}$/i.test(commit.sha)) throw new Error("Invalid repository commit response.");
+  return { ...ref, ref: commit.sha };
+}
+
+/** Read a complete immutable remote tree without writing to the local skill store. */
+export async function fetchRepoManifest(
+  ref: RepoRef,
+  skillPath: string
+): Promise<Record<string, string>> {
+  const snapshot = await resolveRepoSnapshot(ref);
+  const normalizedPath = skillPath.replace(/\/$/, "");
+  const files = await listRepoFiles(
+    snapshot,
+    {
+      name: "status",
+      path: normalizedPath,
+      skillFile: normalizeSkillFile(normalizedPath),
+    },
+    ref.path
+  );
+  const manifest: Record<string, string> = Object.create(null) as Record<string, string>;
+  for (const file of files) {
+    const relative = normalizedPath ? file.slice(normalizedPath.length + 1) : file;
+    if (
+      !relative ||
+      relative.split(/[\\/]/).some((part) => part === ".." || part === ".") ||
+      path.isAbsolute(relative) ||
+      relative.includes("\\")
+    ) {
+      throw new Error(`Unsafe repository file path: ${file}`);
+    }
+    if (relative === "skill.json" || relative === ".skillbox-manifest.json") continue;
+    const filePath = ref.path ? `${ref.path}/${file}` : file;
+    manifest[relative] = createHash("sha256")
+      .update(await fetchBytes(buildRawUrl(snapshot, filePath)))
+      .digest("hex");
+  }
+  if (!manifest["SKILL.md"]) throw new Error("Remote skill is missing SKILL.md.");
+  return manifest;
 }

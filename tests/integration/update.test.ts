@@ -1,7 +1,32 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import http from "node:http";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from "vitest";
 import { runCli, runCliJson } from "../helpers/cli.js";
-import { VALID_SKILL_MARKDOWN, TEST_URLS } from "../helpers/fixtures.js";
+import { VALID_SKILL_MARKDOWN } from "../helpers/fixtures.js";
 import { testEnv } from "../setup.js";
+
+let server: http.Server;
+let fixtureUrl: string;
+let fixtureContent: string;
+let fixtureStatus: number;
+beforeAll(async () => {
+  server = http.createServer((_request, response) => {
+    response.writeHead(fixtureStatus, { "content-type": "text/plain" });
+    response.end(fixtureContent);
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("No fixture server address");
+  fixtureUrl = `http://127.0.0.1:${address.port}/SKILL.md`;
+});
+beforeEach(() => {
+  fixtureContent = VALID_SKILL_MARKDOWN;
+  fixtureStatus = 200;
+});
+afterAll(async () => {
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+});
 
 describe("update command", () => {
   describe("with local skills", () => {
@@ -27,24 +52,25 @@ describe("update command", () => {
 
   describe("with url-sourced skills", () => {
     beforeEach(async () => {
-      // Add skill from URL (this may fail due to network, but we handle it)
-      await runCli(["add", TEST_URLS.validSkill]);
+      const added = await runCli(["add", fixtureUrl, "--name", "url-test"]);
+      expect(added.exitCode, added.stdout + added.stderr).toBe(0);
+      fixtureContent = VALID_SKILL_MARKDOWN + "\nUpdated content\n";
     });
 
-    it("updates url-sourced skill when available", async () => {
+    it("updates url-sourced skill from a controlled server", async () => {
       const { result, data } = await runCliJson<{
         data: {
           results: Array<{ name: string; source: string; status: string }>;
         };
       }>(["update"]);
 
-      // If network is available and skill was added successfully
-      if (result.exitCode === 0 && data?.data.results.length) {
-        const urlResult = data?.data.results.find((r) => r.source === "url");
-        if (urlResult) {
-          expect(urlResult.status).toBe("updated");
-        }
-      }
+      expect(result.exitCode, result.stdout + result.stderr).toBe(0);
+      expect(data?.data.results).toContainEqual(
+        expect.objectContaining({ name: "url-test", source: "url", status: "updated" })
+      );
+      expect(
+        await fs.readFile(path.join(testEnv.skillsDir, "url-test", "SKILL.md"), "utf8")
+      ).toContain("Updated content");
     });
   });
 
@@ -58,19 +84,19 @@ describe("update command", () => {
 
   describe("with --project flag", () => {
     it("updates project installs only", async () => {
+      await fs.mkdir(path.join(testEnv.projectDir, ".git"));
       await runCli(["config", "set", "--default-scope", "project"]);
       const { result: addResult, data: addData } = await runCliJson<{
         ok: boolean;
         data?: { name: string };
         error?: { message: string };
-      }>(["add", TEST_URLS.validSkill, "--name", "project-update-skill"], {
+      }>(["add", fixtureUrl, "--name", "project-update-skill"], {
         cwd: testEnv.projectDir,
       });
 
-      if (addResult.exitCode !== 0 || addData?.ok === false) {
-        expect(addResult.stdout + addResult.stderr).toMatch(/error|failed|rate|network|fetch/i);
-        return;
-      }
+      expect(addResult.exitCode, addResult.stdout + addResult.stderr).toBe(0);
+      expect(addData?.ok).toBe(true);
+      fixtureContent += "\nProject updated content\n";
 
       const { result, data } = await runCliJson<{
         data: {
@@ -82,7 +108,13 @@ describe("update command", () => {
       expect(result.exitCode).toBe(0);
       expect(data?.data.project).toBe(testEnv.projectDir);
       const updated = data?.data.results.find((entry) => entry.name === "project-update-skill");
-      expect(updated?.status).not.toBe("skipped");
+      expect(updated?.status).toBe("updated");
+      expect(
+        await fs.readFile(
+          path.join(testEnv.projectDir, ".claude", "skills", "project-update-skill", "SKILL.md"),
+          "utf8"
+        )
+      ).toContain("Project updated content");
     });
   });
 
@@ -113,29 +145,24 @@ describe("update command", () => {
 
     it("shows checkmark for successful updates", async () => {
       // Add a URL skill first
-      const addResult = await runCli(["add", TEST_URLS.validSkill, "--name", "url-progress-skill"]);
+      const addResult = await runCli(["add", fixtureUrl, "--name", "url-progress-skill"]);
 
-      if (addResult.exitCode !== 0) {
-        // Network issue, skip this test
-        expect(addResult.stdout + addResult.stderr).toMatch(/error|failed|rate|network|fetch/i);
-        return;
-      }
-
+      expect(addResult.exitCode, addResult.stdout + addResult.stderr).toBe(0);
       const result = await runCli(["update", "url-progress-skill"]);
-
-      if (result.exitCode === 0) {
-        expect(result.stdout).toMatch(/✓\s+url-progress-skill/);
-      }
+      expect(result.exitCode, result.stdout + result.stderr).toBe(0);
+      expect(result.stdout).toMatch(/✓\s+url-progress-skill/);
     });
 
     it("shows X indicator for failed updates", async () => {
       // Add a skill with a URL that will fail
       await testEnv.addSkillToIndex({
         name: "broken-url-skill",
-        source: { type: "url", url: "https://invalid.example.com/nonexistent.md" },
+        source: { type: "url", url: fixtureUrl },
       });
 
+      fixtureStatus = 503;
       const result = await runCli(["update", "broken-url-skill"]);
+      expect(result.exitCode).not.toBe(0);
 
       expect(result.stdout).toMatch(/✗\s+broken-url-skill/);
     });

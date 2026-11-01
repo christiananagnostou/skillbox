@@ -1,5 +1,8 @@
 import path from "node:path";
 import { getErrorMessage } from "../lib/command.js";
+import { readManagedManifest } from "../lib/managed-manifest.js";
+import { skillDir } from "../lib/skill-store.js";
+import { assertCanonicalReplaceable } from "../lib/managed-guard.js";
 import { loadConfig } from "../lib/config.js";
 import { parseRepoRef, type RepoRef } from "../lib/github.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "../lib/index.js";
@@ -16,13 +19,14 @@ import {
 import { buildProjectAgentPaths } from "../lib/project-paths.js";
 import {
   fetchRepoFile,
+  fetchRepoManifest,
   listRepoSkills,
   normalizeRepoRef,
+  resolveRepoSnapshot,
   writeRepoSkillDirectory,
 } from "../lib/repo-skills.js";
 import { ensureProjectRegistered, resolveRuntime } from "../lib/runtime.js";
 import { buildMetadata, parseSkillMarkdown } from "../lib/skill-parser.js";
-import { writeSkillMetadata } from "../lib/skill-store.js";
 import { buildSymlinkWarning, buildTargets, installSkillToTargets } from "../lib/sync.js";
 import type { SkillInstall } from "../lib/types.js";
 
@@ -61,7 +65,8 @@ async function installSkillTargets(
   skillName: string,
   options: RepoAddOptions,
   installs: SkillInstall[]
-): Promise<void> {
+): Promise<string[]> {
+  const failures: string[] = [];
   const { projectRoot, scope, agentList } = await resolveRuntime({
     global: options.global,
     agents: options.agents,
@@ -82,13 +87,19 @@ async function installSkillTargets(
     const results = await installSkillToTargets(skillName, targets, config);
 
     const warnings = buildSymlinkWarning(agent, results);
-    for (const warning of warnings) {
-      printInfo(warning);
+    if (!options.json) {
+      for (const warning of warnings) printInfo(warning);
     }
+    failures.push(
+      ...results
+        .filter((result) => result.error || result.mode === "skipped")
+        .map((result) => `${result.path}: ${result.error ?? "install skipped"}`)
+    );
 
-    // Record all targets, not just successfully written ones
-    // The warning tells users about symlink issues, but we still track the install intent
-    const deduped = recordInstallPaths(targets, recordedPaths);
+    const successful = results
+      .filter((result) => !result.error && result.mode !== "skipped")
+      .map((result) => result.path);
+    const deduped = recordInstallPaths(successful, recordedPaths);
     for (const target of deduped) {
       installs.push({
         scope,
@@ -98,6 +109,7 @@ async function installSkillTargets(
       });
     }
   }
+  return failures;
 }
 
 export function isRepoUrl(input: string): boolean {
@@ -106,7 +118,8 @@ export function isRepoUrl(input: string): boolean {
 
 export async function handleRepoInstall(input: string, options: RepoAddOptions): Promise<void> {
   const ref = await ensureRepoRef(input);
-  const { skills } = await listRepoSkills(ref);
+  const snapshot = await resolveRepoSnapshot(ref);
+  const { skills } = await listRepoSkills(snapshot);
 
   const skillNames = skills.map((skill) => skill.name).sort();
 
@@ -149,8 +162,30 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
     }
 
     try {
+      const sourcePath = [ref.path, skill.path].filter(Boolean).join("/");
+      const source = {
+        type: "git" as const,
+        repo: `${ref.owner}/${ref.repo}`,
+        path: sourcePath || undefined,
+        ref: ref.ref,
+      };
+
+      await assertCanonicalReplaceable(skill.name, source);
+      if (alreadyInstalled) {
+        const baseline = await readManagedManifest(skillDir(skill.name));
+        const remote = await fetchRepoManifest(snapshot, skill.path);
+        if (
+          !baseline ||
+          Object.keys(baseline).length !== Object.keys(remote).length ||
+          Object.entries(remote).some(([name, checksum]) => baseline[name] !== checksum)
+        ) {
+          throw new Error(
+            `Skill ${skill.name} has upstream changes. Run unscoped update before adding another install.`
+          );
+        }
+      }
       const skillMarkdown = await fetchRepoFile(
-        ref,
+        snapshot,
         ref.path ? `${ref.path}/${skill.skillFile}` : skill.skillFile
       );
       const parsed = parseSkillMarkdown(skillMarkdown);
@@ -162,18 +197,9 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
         continue;
       }
 
-      await writeRepoSkillDirectory(ref, skill.path, skill.name);
-
-      const sourcePath = [ref.path, skill.path].filter(Boolean).join("/");
-      const source = {
-        type: "git" as const,
-        repo: `${ref.owner}/${ref.repo}`,
-        path: sourcePath || undefined,
-        ref: ref.ref,
-      };
-
       const metadata = buildMetadata(parsed, source, skill.name);
-      await writeSkillMetadata(skill.name, metadata);
+      if (!alreadyInstalled)
+        await writeRepoSkillDirectory(snapshot, skill.path, skill.name, metadata);
       const updated = upsertSkill(index, {
         name: skill.name,
         source,
@@ -181,8 +207,10 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
         updatedAt: metadata.updatedAt,
       });
 
+      index.skills = updated.skills;
+      await saveIndex(sortIndex(index));
       const installs: SkillInstall[] = [];
-      await installSkillTargets(skill.name, options, installs);
+      const failures = await installSkillTargets(skill.name, options, installs);
 
       const nextIndex = upsertSkill(updated, {
         name: skill.name,
@@ -193,6 +221,9 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
       });
 
       index.skills = nextIndex.skills;
+      await saveIndex(sortIndex(index));
+      if (failures.length)
+        throw new Error(`Canonical skill saved but installation failed: ${failures.join("; ")}`);
       if (alreadyInstalled) {
         summary.updated.push(skill.name);
         if (showProgress) {
@@ -219,8 +250,13 @@ export async function handleRepoInstall(input: string, options: RepoAddOptions):
 
   await saveIndex(sortIndex(index));
 
+  if (summary.failed.length) process.exitCode = 1;
   if (options.json) {
-    printJson({ ok: true, command: "add", data: { repo: `${ref.owner}/${ref.repo}`, ...summary } });
+    printJson({
+      ok: summary.failed.length === 0,
+      command: "add",
+      data: { repo: `${ref.owner}/${ref.repo}`, ...summary },
+    });
     return;
   }
 
