@@ -72,12 +72,21 @@ describe("automatic update policy", () => {
     await runAutoUpdate({ scheduled: true });
     expect(runUpdates).toHaveBeenCalledTimes(2);
   });
-  it("records sanitized failure and backs off until next interval", async () => {
+  it("records sanitized failure and retries after one hour", async () => {
     await policy();
     vi.mocked(runUpdates).mockRejectedValue(new Error("secret-token"));
     expect(await runAutoUpdate({ scheduled: true })).toMatchObject({ ok: false, failed: 1 });
     expect(JSON.stringify(await loadAutoUpdateHistory())).not.toContain("secret-token");
     expect(await runAutoUpdate({ scheduled: true })).toMatchObject({ skipped: true });
+    const failure = (await loadAutoUpdateHistory())[0];
+    const now = vi
+      .spyOn(Date, "now")
+      .mockReturnValue(Date.parse(failure.startedAt) + 3_600_000 - 1);
+    expect(await runAutoUpdate({ scheduled: true })).toMatchObject({ skipped: true });
+    expect(runUpdates).toHaveBeenCalledTimes(1);
+    now.mockReturnValue(Date.parse(failure.startedAt) + 3_600_000);
+    expect(await runAutoUpdate({ scheduled: true })).toMatchObject({ ok: false });
+    expect(runUpdates).toHaveBeenCalledTimes(2);
   });
   it("retains cleanup state on registration failure and allows disabling", async () => {
     vi.spyOn(fs, "access").mockResolvedValue();
@@ -107,5 +116,31 @@ describe("automatic update policy", () => {
     await expect(disableAutoUpdate()).rejects.toThrow("denied");
     expect(await loadAutoUpdatePolicy()).toMatchObject({ enabled: false, registered: true });
     expect(await runAutoUpdate({ scheduled: true })).toMatchObject({ skipped: true });
+  });
+  it("keeps successful runs on the configured cadence and reports last success separately", async () => {
+    await policy();
+    await runAutoUpdate({ scheduled: true });
+    const success = (await loadAutoUpdateHistory())[0];
+    const now = vi.spyOn(Date, "now").mockReturnValue(Date.parse(success.startedAt) + 3_600_000);
+    expect(await runAutoUpdate({ scheduled: true })).toMatchObject({ skipped: true });
+    expect(runUpdates).toHaveBeenCalledTimes(1);
+    now.mockReturnValue(Date.parse(success.startedAt) + 24 * 3_600_000);
+    vi.mocked(runUpdates).mockRejectedValue(new Error("offline"));
+    expect(await runAutoUpdate({ scheduled: true })).toMatchObject({ ok: false });
+    expect(await autoUpdateStatus()).toMatchObject({
+      lastRun: { ok: false },
+      lastSuccess: success,
+    });
+    await runAutoUpdate({ dryRun: true });
+    expect(await autoUpdateStatus()).toMatchObject({
+      lastRun: { ok: false },
+      lastSuccess: success,
+    });
+  });
+  it("reports no last success when only failed attempts exist", async () => {
+    expect(await autoUpdateStatus()).toMatchObject({ lastRun: null, lastSuccess: null });
+    vi.mocked(runUpdates).mockRejectedValue(new Error("offline"));
+    await runAutoUpdate();
+    expect(await autoUpdateStatus()).toMatchObject({ lastRun: { ok: false }, lastSuccess: null });
   });
 });

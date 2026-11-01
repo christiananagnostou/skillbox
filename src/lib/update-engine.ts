@@ -15,7 +15,7 @@ import {
 import { buildMetadata, parseSkillMarkdown } from "./skill-parser.js";
 import { ensureSkillsDir, skillDir, hashContent, readSkillMetadata } from "./skill-store.js";
 import { installSkillToTargets } from "./sync.js";
-import type { IndexedSkill, SkillIndex } from "./types.js";
+import type { IndexedSkill, SkillIndex, SkillMetadata } from "./types.js";
 
 export type UpdateResult = {
   name: string;
@@ -42,12 +42,7 @@ export type UpdateSummary = {
   skipped: number;
 };
 
-async function updateUrlSkill(
-  skill: IndexedSkill,
-  index: SkillIndex,
-  installPaths: string[],
-  config: Awaited<ReturnType<typeof loadConfig>>
-): Promise<void> {
+async function publishUrlSkill(skill: IndexedSkill): Promise<SkillMetadata> {
   if (!skill.source.url) {
     throw new Error(`Invalid source for skill ${skill.name}.`);
   }
@@ -70,38 +65,10 @@ async function updateUrlSkill(
     await fs.rm(staging, { recursive: true, force: true });
   }
 
-  const nextIndex = upsertSkill(index, {
-    name: skill.name,
-    source: { type: "url", url: skill.source.url },
-    checksum: parsed.checksum,
-    updatedAt: metadata.updatedAt,
-    pendingSync: installPaths,
-  });
-  index.skills = nextIndex.skills;
-  await saveIndex(sortIndex(index));
-  if (installPaths.length > 0) {
-    const results = await installSkillToTargets(skill.name, installPaths, config);
-    const failed = results.filter((result) => result.error || result.mode === "skipped");
-    index.skills.find((entry) => entry.name === skill.name)!.pendingSync = failed.map(
-      (result) => result.path
-    );
-    await saveIndex(sortIndex(index));
-    if (failed.length)
-      throw new Error(
-        `Canonical content updated, but target synchronization failed: ${failed.map((result) => `${result.path}: ${result.error ?? "skipped"}`).join("; ")}`
-      );
-  }
-
-  index.skills.find((entry) => entry.name === skill.name)!.lastSync = new Date().toISOString();
-  await saveIndex(sortIndex(index));
+  return metadata;
 }
 
-async function updateGitSkill(
-  skill: IndexedSkill,
-  index: SkillIndex,
-  installPaths: string[],
-  config: Awaited<ReturnType<typeof loadConfig>>
-): Promise<void> {
+async function publishGitSkill(skill: IndexedSkill): Promise<SkillMetadata> {
   if (!skill.source.repo) {
     throw new Error(`Invalid source for skill ${skill.name}.`);
   }
@@ -135,10 +102,26 @@ async function updateGitSkill(
   const metadata = buildMetadata(parsed, source, skill.name);
   await writeRepoSkillDirectory(snapshot, skillPath, skill.name, metadata);
 
+  return metadata;
+}
+
+async function updateSkill(
+  skill: IndexedSkill,
+  index: SkillIndex,
+  installPaths: string[],
+  config: Awaited<ReturnType<typeof loadConfig>>
+): Promise<void> {
+  let metadata: SkillMetadata;
+  if (skill.source.type === "url") metadata = await publishUrlSkill(skill);
+  else if (skill.source.type === "git") metadata = await publishGitSkill(skill);
+  else throw new Error("Unsupported source type.");
+
+  // Persist canonical publication before synchronizing targets. A failed target
+  // must retain its pending path while successful canonical content stays indexed.
   const nextIndex = upsertSkill(index, {
     name: skill.name,
-    source,
-    checksum: parsed.checksum,
+    source: metadata.source,
+    checksum: metadata.checksum,
     updatedAt: metadata.updatedAt,
     pendingSync: installPaths,
   });
@@ -313,10 +296,7 @@ async function runUpdatesLocked(options: UpdateOptions): Promise<UpdateSummary> 
             index.skills = upsertSkill(index, skill).skills;
             await saveIndex(sortIndex(index));
           }
-          if (skill.source.type === "url") await updateUrlSkill(skill, index, installPaths, config);
-          else if (skill.source.type === "git")
-            await updateGitSkill(skill, index, installPaths, config);
-          else throw new Error("Unsupported source type.");
+          await updateSkill(skill, index, installPaths, config);
           result.status = "updated";
         }
       }

@@ -28,7 +28,7 @@ describe("native scheduler plans", () => {
     expect(plan.files[0].content).toContain(
       '"/opt/skill box/dist/cli.js" auto-update run --scheduled --json'
     );
-    expect(plan.files[1].content).toContain("OnCalendar=hourly\nPersistent=true");
+    expect(plan.files[1].content).toContain("OnCalendar=hourly\nPersistent=true\nWakeSystem=false");
     expect(plan.enable).toContainEqual([
       "systemctl",
       "--user",
@@ -44,7 +44,11 @@ describe("native scheduler plans", () => {
   it("produces launchd argv and escapes XML", () => {
     const plan = makeSchedulerPlan({ ...opts, platform: "darwin", uid: 501, cli: "/tmp/A&B.js" });
     expect(plan.files[0].content).toContain("/tmp/A&amp;B.js");
-    expect(plan.files[0].content).toContain("<integer>86400</integer>");
+    expect(plan.files[0].content).toContain(
+      "<key>StartCalendarInterval</key><dict><key>Minute</key><integer>0</integer></dict>"
+    );
+    expect(plan.files[0].content).toContain("<key>RunAtLoad</key><true/>");
+    expect(plan.files[0].content).not.toContain("<key>StartInterval</key>");
     expect(plan.disable).toEqual([["launchctl", "bootout", "gui/501/com.skillbox.auto-update"]]);
   });
   it("uses Windows XML and least privilege without shell invocation", () => {
@@ -55,6 +59,10 @@ describe("native scheduler plans", () => {
     });
     expect(plan.files[0].content).toContain("&quot;C:\\Program Files\\Skillbox\\cli.js&quot;");
     expect(plan.files[0].content).toContain("<RunLevel>LeastPrivilege</RunLevel>");
+    expect(plan.files[0].content).toContain("<Interval>PT1H</Interval>");
+    expect(plan.files[0].content).not.toContain("<Duration>");
+    expect(plan.files[0].content).toContain("<StartWhenAvailable>true</StartWhenAvailable>");
+    expect(plan.files[0].content).toContain("<WakeToRun>false</WakeToRun>");
     expect(plan.enable[0][0]).toBe("schtasks");
   });
   it("rejects unsupported platforms, unsafe paths and invalid intervals", () => {

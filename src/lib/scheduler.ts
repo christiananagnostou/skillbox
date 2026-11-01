@@ -70,7 +70,7 @@ export function makeSchedulerPlan(options: {
         },
         {
           path: path.join(base, "skillbox-auto-update.timer"),
-          content: `[Unit]\nDescription=Periodic Skillbox updates\n[Timer]\nOnCalendar=hourly\nPersistent=true\nUnit=skillbox-auto-update.service\n[Install]\nWantedBy=timers.target\n`,
+          content: `[Unit]\nDescription=Periodic Skillbox updates\n[Timer]\nOnCalendar=hourly\nPersistent=true\nWakeSystem=false\nUnit=skillbox-auto-update.service\n[Install]\nWantedBy=timers.target\n`,
         },
       ],
       enable: [
@@ -94,7 +94,7 @@ export function makeSchedulerPlan(options: {
       files: [
         {
           path: target,
-          content: `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>Label</key><string>${label}</string><key>ProgramArguments</key><array>${[node, cli, "auto-update", "run", "--scheduled", "--json"].map((arg) => `<string>${xml(arg)}</string>`).join("")}</array><key>EnvironmentVariables</key><dict><key>HOME</key><string>${xml(home)}</string></dict><key>StartInterval</key><integer>${intervalHours * 3600}</integer><key>RunAtLoad</key><true/></dict></plist>\n`,
+          content: `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>Label</key><string>${label}</string><key>ProgramArguments</key><array>${[node, cli, "auto-update", "run", "--scheduled", "--json"].map((arg) => `<string>${xml(arg)}</string>`).join("")}</array><key>EnvironmentVariables</key><dict><key>HOME</key><string>${xml(home)}</string></dict><key>StartCalendarInterval</key><dict><key>Minute</key><integer>0</integer></dict><key>RunAtLoad</key><true/></dict></plist>\n`,
         },
       ],
       enable: [["launchctl", "bootstrap", domain, target]],
@@ -110,7 +110,7 @@ export function makeSchedulerPlan(options: {
       files: [
         {
           path: target,
-          content: `<?xml version="1.0" encoding="UTF-16"?>\n<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><Triggers><TimeTrigger><Repetition><Interval>PT1H</Interval><StopAtDurationEnd>false</StopAtDurationEnd></Repetition><StartBoundary>2020-01-01T00:00:00</StartBoundary><Enabled>true</Enabled></TimeTrigger></Triggers><Principals><Principal id="Author"><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals><Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy><StartWhenAvailable>true</StartWhenAvailable><ExecutionTimeLimit>PT15M</ExecutionTimeLimit></Settings><Actions Context="Author"><Exec><Command>${xml(node)}</Command><Arguments>${xml(`${windowsQuote(cli)} auto-update run --scheduled --json`)}</Arguments></Exec></Actions></Task>\n`,
+          content: `<?xml version="1.0" encoding="UTF-16"?>\n<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><Triggers><TimeTrigger><Repetition><Interval>PT1H</Interval><StopAtDurationEnd>false</StopAtDurationEnd></Repetition><StartBoundary>2020-01-01T00:00:00</StartBoundary><Enabled>true</Enabled></TimeTrigger></Triggers><Principals><Principal id="Author"><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals><Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy><StartWhenAvailable>true</StartWhenAvailable><WakeToRun>false</WakeToRun><ExecutionTimeLimit>PT15M</ExecutionTimeLimit></Settings><Actions Context="Author"><Exec><Command>${xml(node)}</Command><Arguments>${xml(`${windowsQuote(cli)} auto-update run --scheduled --json`)}</Arguments></Exec></Actions></Task>\n`,
         },
       ],
       enable: [["schtasks", "/Create", "/TN", "SkillboxAutoUpdate", "/XML", target, "/F"]],

@@ -24,16 +24,20 @@ const policySchema = z.object({
   cli: z.string().optional(),
 });
 export type AutoUpdatePolicy = z.infer<typeof policySchema>;
-export type AutoUpdateRun = {
-  startedAt: string;
-  completedAt: string;
-  dryRun: boolean;
-  ok: boolean;
-  updated: number;
-  failed: number;
-  skipped: number;
-  results: { name: string; status: string; reason?: string }[];
-};
+const runSchema = z.object({
+  startedAt: z.iso.datetime(),
+  completedAt: z.iso.datetime(),
+  dryRun: z.boolean(),
+  ok: z.boolean(),
+  updated: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative(),
+  results: z.array(
+    z.object({ name: z.string(), status: z.string(), reason: z.string().optional() })
+  ),
+});
+const historySchema = z.array(runSchema).max(50);
+export type AutoUpdateRun = z.infer<typeof runSchema>;
 const policyPath = (): string => path.join(skillboxRoot(), "auto-update.json");
 const historyPath = (): string => path.join(skillboxRoot(), "auto-update-history.json");
 export function parseInterval(value: string): number {
@@ -55,24 +59,7 @@ export async function loadAutoUpdatePolicy(): Promise<AutoUpdatePolicy> {
 }
 export async function loadAutoUpdateHistory(): Promise<AutoUpdateRun[]> {
   try {
-    const data: unknown = JSON.parse(await fs.readFile(historyPath(), "utf8"));
-    return z
-      .array(
-        z.object({
-          startedAt: z.iso.datetime(),
-          completedAt: z.iso.datetime(),
-          dryRun: z.boolean(),
-          ok: z.boolean(),
-          updated: z.number().int().nonnegative(),
-          failed: z.number().int().nonnegative(),
-          skipped: z.number().int().nonnegative(),
-          results: z.array(
-            z.object({ name: z.string(), status: z.string(), reason: z.string().optional() })
-          ),
-        })
-      )
-      .max(50)
-      .parse(data);
+    return historySchema.parse(JSON.parse(await fs.readFile(historyPath(), "utf8")));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw new Error("Invalid auto-update history.");
@@ -131,13 +118,17 @@ export async function autoUpdateStatus(): Promise<{
   policy: AutoUpdatePolicy;
   schedulerActive: boolean;
   lastRun: AutoUpdateRun | null;
+  lastSuccess: AutoUpdateRun | null;
 }> {
   const policy = await loadAutoUpdatePolicy();
+  const schedulerActive =
+    policy.enabled || policy.registered ? await verifyScheduler(planFor(policy)) : false;
+  const history = await loadAutoUpdateHistory();
   return {
     policy,
-    schedulerActive:
-      policy.enabled || policy.registered ? await verifyScheduler(planFor(policy)) : false,
-    lastRun: (await loadAutoUpdateHistory()).at(-1) ?? null,
+    schedulerActive,
+    lastRun: history.at(-1) ?? null,
+    lastSuccess: history.filter((run) => run.ok && !run.dryRun).at(-1) ?? null,
   };
 }
 export async function runAutoUpdate(
@@ -149,11 +140,16 @@ export async function runAutoUpdate(
     if (options.scheduled) {
       if (!policy.enabled) return { skipped: true, reason: "Automatic updates are disabled." };
       const last = history.filter((run) => !run.dryRun).at(-1);
-      if (last && Date.now() - Date.parse(last.startedAt) < policy.intervalHours * 3_600_000)
-        return { skipped: true, reason: "Update interval has not elapsed." };
+      // Failed attempts retry on the next hourly wake; successes retain the configured cadence.
+      const waitHours = last?.ok === false ? 1 : policy.intervalHours;
+      if (last && Date.now() - Date.parse(last.startedAt) < waitHours * 3_600_000)
+        return {
+          skipped: true,
+          reason: last.ok ? "Update interval has not elapsed." : "Retry interval has not elapsed.",
+        };
     }
     const startedAt = new Date().toISOString();
-    let report: Awaited<ReturnType<typeof runUpdates>>;
+    let report: Pick<AutoUpdateRun, "updated" | "failed" | "skipped" | "results">;
     try {
       report = await runUpdates({
         dryRun: options.dryRun,
@@ -161,11 +157,7 @@ export async function runAutoUpdate(
         pinned: policy.pinned,
       });
     } catch {
-      const failure: AutoUpdateRun = {
-        startedAt,
-        completedAt: new Date().toISOString(),
-        dryRun: !!options.dryRun,
-        ok: false,
+      report = {
         updated: 0,
         failed: 1,
         skipped: 0,
@@ -178,8 +170,6 @@ export async function runAutoUpdate(
           },
         ],
       };
-      if (!options.dryRun) await writeJsonAtomic(historyPath(), [...history, failure].slice(-50));
-      return failure;
     }
     const run: AutoUpdateRun = {
       startedAt,

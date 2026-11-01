@@ -12,8 +12,8 @@ recurring bot or release was activated.
 | `npm run build`                                     | Exit 0                                                             |
 | `npm run lint:ci`                                   | Exit 0                                                             |
 | `npm run format:check`                              | Exit 0                                                             |
-| `npm test`                                          | Exit 0; 29 files, 224 tests passed                                 |
-| `npm run test:offline`                              | Exit 0; 17 files, 143 tests passed                                 |
+| `npm test`                                          | Exit 0; 29 files, 226 tests passed                                 |
+| `npm run test:offline`                              | Exit 0; 17 files, 145 tests passed                                 |
 | `node scripts/verify-clean-package.mjs` after build | Exit 0; 10 packages installed, all 12 subprocess commands exited 0 |
 | `git diff --check`                                  | Exit 0                                                             |
 
@@ -106,3 +106,34 @@ transient sharing errors with bounded backoff while retaining the old destinatio
 additional regression cases cover both fixes. The follow-up local full suite passed 224 tests
 and the offline suite passed 143 tests; build, strict lint and formatting passed. Native
 scheduler lifecycle verification remains a separate release gate regardless of CI results.
+
+## Simplification and scheduled catch-up pass
+
+Starting from PR head `c03e3fb`, the behavior-preserving consolidation removed 40 source
+lines from three existing files. It shares the URL/Git post-publication synchronization path,
+infers run-history types from the validation schema, and constructs sanitized run records once.
+All durability checkpoints, local-edit checks, scope guards and failure reporting remain.
+The separate failed-attempt retry/status refinement adds nine lines: net runtime reduction
+31 lines, with no new files, dependencies, background observer or configuration flags.
+
+| Implementation file           | Before | After |
+| ----------------------------- | -----: | ----: |
+| `src/lib/update-engine.ts`    |    341 |   321 |
+| `src/lib/auto-update.ts`      |    206 |   196 |
+| `src/commands/auto-update.ts` |     77 |    76 |
+| `src/lib/scheduler.ts`        |    203 |   203 |
+
+The macOS adapter now uses an hourly calendar trigger and RunAtLoad; the policy gates due
+work. Windows indefinite repetition supports delayed missed-task catch-up. Linux and Windows
+explicitly disable waking the computer. Failed scheduled attempts become retry-eligible after
+one hour from their start, while successful runs retain the configured cadence; status reports
+lastRun and the latest retained lastSuccess separately. These are correctness refinements to
+scheduled catch-up, not a literal every-wake listener. See the primary-source links and precise
+network/sleep limits in [automatic updates](auto-update.md).
+
+Local validation: 226 full-suite tests, 145 offline tests, build, strict lint and formatting
+passed. A fresh clean-package run installed ten packages in four seconds; all twelve subprocess
+commands passed. Independent review found no blocker. Native unit syntax passed the installed
+systemd 257 parser. Native lifecycle testing is unavailable in this executor: PID1 is tail,
+no systemd user bus exists, and systemctl --user cannot connect. No lifecycle jobs were created.
+macOS/Windows activation and actual sleep/resume remain release gates.
