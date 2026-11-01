@@ -13,6 +13,7 @@ beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), "skillbox-state-"));
 });
 afterEach(async () => {
+  vi.restoreAllMocks();
   await fs.rm(root, { recursive: true, force: true });
 });
 
@@ -23,10 +24,17 @@ describe("atomic JSON publication", () => {
     const writes = Array.from({ length: 20 }, (_, i) =>
       writeJsonAtomic(target, { value: String(i).repeat(1000) })
     );
-    for (let i = 0; i < 20; i++) {
-      expect(JSON.parse(await fs.readFile(target, "utf8"))).toHaveProperty("value");
+    // Attach handlers immediately and settle every writer before fixture cleanup, even if a read fails.
+    const settledWrites = Promise.allSettled(writes);
+    let results: PromiseSettledResult<void>[] = [];
+    try {
+      for (let i = 0; i < 20; i++) {
+        expect(JSON.parse(await fs.readFile(target, "utf8"))).toHaveProperty("value");
+      }
+    } finally {
+      results = await settledWrites;
     }
-    await Promise.all(writes);
+    expect(results.filter((result) => result.status === "rejected")).toEqual([]);
     expect(await fs.readdir(root)).toEqual(["index.json"]);
   });
 
@@ -35,6 +43,52 @@ describe("atomic JSON publication", () => {
     await writeJsonAtomic(target, { value: "old" });
     await expect(writeJsonAtomic(target, { invalid: 1n })).rejects.toThrow();
     expect(JSON.parse(await fs.readFile(target, "utf8"))).toEqual({ value: "old" });
+  });
+
+  for (const code of ["EPERM", "EACCES", "EBUSY"]) {
+    it(`retries transient Windows ${code} without removing the old destination`, async () => {
+      const target = path.join(root, "index.json");
+      await writeJsonAtomic(target, { value: "old" });
+      vi.spyOn(os, "platform").mockReturnValue("win32");
+      const rename = fs.rename.bind(fs);
+      let attempts = 0;
+      const replacement = vi.spyOn(fs, "rename").mockImplementation(async (source, destination) => {
+        expect(JSON.parse(await fs.readFile(target, "utf8"))).toEqual({ value: "old" });
+        if (++attempts <= 2) throw Object.assign(new Error("sharing violation"), { code });
+        return rename(source, destination);
+      });
+      await writeJsonAtomic(target, { value: "new" });
+      expect(replacement).toHaveBeenCalledTimes(3);
+      expect(JSON.parse(await fs.readFile(target, "utf8"))).toEqual({ value: "new" });
+      expect(await fs.readdir(root)).toEqual(["index.json"]);
+    });
+  }
+
+  it("bounds permanent Windows contention and cleans the temporary file", async () => {
+    const target = path.join(root, "index.json");
+    await writeJsonAtomic(target, { value: "old" });
+    vi.spyOn(os, "platform").mockReturnValue("win32");
+    const failure = Object.assign(new Error("destination unavailable"), { code: "EPERM" });
+    const replacement = vi.spyOn(fs, "rename").mockRejectedValue(failure);
+    await expect(writeJsonAtomic(target, { value: "new" })).rejects.toBe(failure);
+    expect(replacement).toHaveBeenCalledTimes(10);
+    expect(JSON.parse(await fs.readFile(target, "utf8"))).toEqual({ value: "old" });
+    expect(await fs.readdir(root)).toEqual(["index.json"]);
+  });
+
+  it.each([
+    ["linux", "EPERM"],
+    ["win32", "ENOSPC"],
+  ] as const)("does not retry %s %s failures", async (platform, code) => {
+    const target = path.join(root, "index.json");
+    await writeJsonAtomic(target, { value: "old" });
+    vi.spyOn(os, "platform").mockReturnValue(platform);
+    const failure = Object.assign(new Error("permanent failure"), { code });
+    const replacement = vi.spyOn(fs, "rename").mockRejectedValue(failure);
+    await expect(writeJsonAtomic(target, { value: "new" })).rejects.toBe(failure);
+    expect(replacement).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(await fs.readFile(target, "utf8"))).toEqual({ value: "old" });
+    expect(await fs.readdir(root)).toEqual(["index.json"]);
   });
 });
 

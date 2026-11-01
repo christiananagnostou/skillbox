@@ -6,7 +6,6 @@ import { hasManagedEdits, writeManagedManifest } from "./managed-manifest.js";
 import { loadConfig } from "./config.js";
 import { fetchText } from "./fetcher.js";
 import { loadIndex, saveIndex, sortIndex, upsertSkill } from "./index.js";
-import { getInstallPaths } from "./installs.js";
 import {
   fetchRepoFile,
   normalizeRepoRef,
@@ -46,7 +45,7 @@ export type UpdateSummary = {
 async function updateUrlSkill(
   skill: IndexedSkill,
   index: SkillIndex,
-  projectRoot: string | null,
+  installPaths: string[],
   config: Awaited<ReturnType<typeof loadConfig>>
 ): Promise<void> {
   if (!skill.source.url) {
@@ -76,11 +75,10 @@ async function updateUrlSkill(
     source: { type: "url", url: skill.source.url },
     checksum: parsed.checksum,
     updatedAt: metadata.updatedAt,
-    pendingSync: getInstallPaths(skill, projectRoot),
+    pendingSync: installPaths,
   });
   index.skills = nextIndex.skills;
   await saveIndex(sortIndex(index));
-  const installPaths = getInstallPaths(skill, projectRoot);
   if (installPaths.length > 0) {
     const results = await installSkillToTargets(skill.name, installPaths, config);
     const failed = results.filter((result) => result.error || result.mode === "skipped");
@@ -101,7 +99,7 @@ async function updateUrlSkill(
 async function updateGitSkill(
   skill: IndexedSkill,
   index: SkillIndex,
-  projectRoot: string | null,
+  installPaths: string[],
   config: Awaited<ReturnType<typeof loadConfig>>
 ): Promise<void> {
   if (!skill.source.repo) {
@@ -142,11 +140,10 @@ async function updateGitSkill(
     source,
     checksum: parsed.checksum,
     updatedAt: metadata.updatedAt,
-    pendingSync: getInstallPaths(skill, projectRoot),
+    pendingSync: installPaths,
   });
   index.skills = nextIndex.skills;
   await saveIndex(sortIndex(index));
-  const installPaths = getInstallPaths(skill, projectRoot);
   if (installPaths.length > 0) {
     const results = await installSkillToTargets(skill.name, installPaths, config);
     const failed = results.filter((result) => result.error || result.mode === "skipped");
@@ -166,10 +163,10 @@ async function updateGitSkill(
 
 async function hasLocalEdits(
   skill: IndexedSkill,
-  projectRoot: string | null,
+  installPaths: string[],
   dryRun = false
 ): Promise<string | null> {
-  const locations = [skillDir(skill.name), ...getInstallPaths(skill, projectRoot)];
+  const locations = [skillDir(skill.name), ...installPaths];
   for (const location of locations) {
     if (!dryRun) await recoverDirectory(location);
     else {
@@ -214,6 +211,43 @@ async function hasLocalEdits(
   return null;
 }
 
+async function resolveProjectIdentity(root: string): Promise<string> {
+  const resolved = path.resolve(root);
+  try {
+    return await fs.realpath(resolved);
+  } catch (error) {
+    if (!["ENOENT", "ENOTDIR"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+    // Missing roots remain distinct by their recorded absolute paths.
+    return resolved;
+  }
+}
+
+async function selectInstallPaths(
+  skill: IndexedSkill,
+  projectRoot: string | null
+): Promise<{
+  installPaths: string[];
+  sharedWithOtherScopes: boolean;
+}> {
+  const installs = skill.installs ?? [];
+  if (!projectRoot)
+    return { installPaths: installs.map((install) => install.path), sharedWithOtherScopes: false };
+  const matches = await Promise.all(
+    installs.map(
+      async (install) =>
+        install.scope === "project" &&
+        Boolean(install.projectRoot) &&
+        (await resolveProjectIdentity(install.projectRoot!)) === projectRoot
+    )
+  );
+  return {
+    installPaths: installs
+      .filter((_install, index) => matches[index])
+      .map((install) => install.path),
+    sharedWithOtherScopes: matches.some((matchesProject) => !matchesProject),
+  };
+}
+
 export async function runUpdates(options: UpdateOptions = {}): Promise<UpdateSummary> {
   return withMutationLock(() => runUpdatesLocked(options));
 }
@@ -225,7 +259,9 @@ async function runUpdatesLocked(options: UpdateOptions): Promise<UpdateSummary> 
     : index.skills;
   if (options.name && targets.length === 0) throw new Error(`Skill not found: ${options.name}`);
   const config = await loadConfig();
-  const projectRoot = options.projectRoot ?? null;
+  const projectRoot = options.projectRoot
+    ? await resolveProjectIdentity(options.projectRoot)
+    : null;
   const results: UpdateResult[] = [];
   if (!options.dryRun) await ensureSkillsDir();
   for (const skill of targets) {
@@ -234,6 +270,7 @@ async function runUpdatesLocked(options: UpdateOptions): Promise<UpdateSummary> 
       if (!skill.name || skill.name === "." || skill.name === ".." || /[\\/]/.test(skill.name)) {
         throw new Error("Invalid indexed skill name.");
       }
+      const { installPaths, sharedWithOtherScopes } = await selectInstallPaths(skill, projectRoot);
       if (skill.disabled) result.reason = "disabled";
       else if (skill.source.type === "local") result.reason = "local source";
       else if (options.exclude?.includes(skill.name)) result.reason = "excluded";
@@ -242,19 +279,14 @@ async function runUpdatesLocked(options: UpdateOptions): Promise<UpdateSummary> 
         /^[a-f0-9]{40}$/i.test(skill.source.ref ?? "")
       )
         result.reason = "pinned";
-      else if (projectRoot && !getInstallPaths(skill, projectRoot).length)
-        result.reason = "outside selected project";
-      else if (
-        projectRoot &&
-        (skill.installs ?? []).some((install) => install.projectRoot !== projectRoot)
-      )
-        result.reason = "canonical content shared with other scopes";
+      else if (projectRoot && !installPaths.length) result.reason = "outside selected project";
+      else if (sharedWithOtherScopes) result.reason = "canonical content shared with other scopes";
       else {
         if (skill.source.type === "url" && !skill.source.url)
           throw new Error(`Invalid source for skill ${skill.name}.`);
         if (skill.source.type === "git" && !/^[^/]+\/[^/]+$/.test(skill.source.repo ?? ""))
           throw new Error(`Invalid source for skill ${skill.name}.`);
-        const editReason = await hasLocalEdits(skill, projectRoot, options.dryRun);
+        const editReason = await hasLocalEdits(skill, installPaths, options.dryRun);
         if (editReason) result.reason = editReason;
         else if (options.dryRun) result.reason = "eligible (dry run)";
         else {
@@ -276,14 +308,14 @@ async function runUpdatesLocked(options: UpdateOptions): Promise<UpdateSummary> 
             Object.assign(skill, {
               checksum: metadata.checksum,
               updatedAt: metadata.updatedAt,
-              pendingSync: getInstallPaths(skill, projectRoot),
+              pendingSync: installPaths,
             });
             index.skills = upsertSkill(index, skill).skills;
             await saveIndex(sortIndex(index));
           }
-          if (skill.source.type === "url") await updateUrlSkill(skill, index, projectRoot, config);
+          if (skill.source.type === "url") await updateUrlSkill(skill, index, installPaths, config);
           else if (skill.source.type === "git")
-            await updateGitSkill(skill, index, projectRoot, config);
+            await updateGitSkill(skill, index, installPaths, config);
           else throw new Error("Unsupported source type.");
           result.status = "updated";
         }

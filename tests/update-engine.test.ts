@@ -138,4 +138,78 @@ describe("deterministic update engine", () => {
     expect((await loadIndex()).skills[0].checksum).toBe(hashContent(next));
     expect((await loadIndex()).skills[0].updatedAt).toBe("recovered");
   });
+  it.each(["selected", "recorded", "both"])(
+    "matches %s project-root aliases without rewriting stored roots",
+    async (aliasLocation) => {
+      const real = path.join(testEnv.projectDir, "real");
+      const alias = path.join(testEnv.projectDir, "alias");
+      await fs.mkdir(real);
+      await fs.symlink(real, alias, "junction");
+      const canonicalRoot = await fs.realpath(real);
+      const target = path.join(real, "demo");
+      const installs: NonNullable<IndexedSkill["installs"]> = [
+        {
+          scope: "project",
+          agent: "claude",
+          path: target,
+          projectRoot: aliasLocation === "recorded" ? alias : canonicalRoot,
+        },
+      ];
+      if (aliasLocation === "both")
+        installs.push({
+          scope: "project",
+          agent: "codex",
+          path: path.join(alias, "second-demo"),
+          projectRoot: alias,
+        });
+      const directory = await seed({ installs });
+      const configPath = path.join(testEnv.configDir, "config.json");
+      const config = JSON.parse(await fs.readFile(configPath, "utf8"));
+      await fs.writeFile(configPath, JSON.stringify({ ...config, installMode: "copy" }));
+      const summary = await runUpdates({
+        projectRoot: aliasLocation === "recorded" ? canonicalRoot : alias,
+      });
+      expect(summary.results[0].status).toBe("updated");
+      expect(await fs.readFile(path.join(directory, "SKILL.md"), "utf8")).toBe(next);
+      for (const install of installs)
+        expect(await fs.readFile(path.join(install.path, "SKILL.md"), "utf8")).toBe(next);
+      expect((await loadIndex()).skills[0].installs).toEqual(installs);
+    }
+  );
+  it.each(["project", "user"] as const)(
+    "retains shared-%s protection when selecting a project alias",
+    async (scope) => {
+      const real = path.join(testEnv.projectDir, "real");
+      const other = path.join(testEnv.projectDir, "other");
+      const alias = path.join(testEnv.projectDir, "alias");
+      await fs.mkdir(real);
+      await fs.mkdir(other);
+      await fs.symlink(real, alias, "junction");
+      const canonicalRoot = await fs.realpath(real);
+      const directory = await seed({
+        installs: [
+          {
+            scope: "project",
+            agent: "claude",
+            path: path.join(real, "demo"),
+            projectRoot: canonicalRoot,
+          },
+          {
+            scope,
+            agent: "codex",
+            path: path.join(other, "demo"),
+            ...(scope === "project" ? { projectRoot: other } : {}),
+          },
+        ],
+      });
+      const before = requests;
+      const index = await loadIndex();
+      expect((await runUpdates({ projectRoot: alias })).results[0].reason).toBe(
+        "canonical content shared with other scopes"
+      );
+      expect(requests).toBe(before);
+      expect(await fs.readFile(path.join(directory, "SKILL.md"), "utf8")).toBe(old + "\n");
+      expect(await loadIndex()).toEqual(index);
+    }
+  );
 });

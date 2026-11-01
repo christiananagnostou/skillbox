@@ -12,8 +12,8 @@ recurring bot or release was activated.
 | `npm run build`                                     | Exit 0                                                             |
 | `npm run lint:ci`                                   | Exit 0                                                             |
 | `npm run format:check`                              | Exit 0                                                             |
-| `npm test`                                          | Exit 0; 29 files, 213 tests passed                                 |
-| `npm run test:offline`                              | Exit 0; 17 files, 132 tests passed                                 |
+| `npm test`                                          | Exit 0; 29 files, 224 tests passed                                 |
+| `npm run test:offline`                              | Exit 0; 17 files, 143 tests passed                                 |
 | `node scripts/verify-clean-package.mjs` after build | Exit 0; 10 packages installed, all 12 subprocess commands exited 0 |
 | `git diff --check`                                  | Exit 0                                                             |
 
@@ -95,3 +95,14 @@ or older upstream content. Such differences require manual reconciliation before
 updates. Canonical versions remain shared across install scopes. Native schedules also depend
 on a working per-user session and stable installed Node/CLI paths; see
 [automatic updates](auto-update.md) for operation and recovery details.
+
+## Cross-platform CI follow-up
+
+The initial draft PR run passed seven jobs and exposed two platform-specific regressions:
+macOS project paths reached through filesystem aliases were skipped, and concurrent Windows
+JSON replacement could fail with EPERM. Project matching now compares filesystem identities
+without changing recorded paths or relaxing shared-scope checks. Windows replacement retries
+transient sharing errors with bounded backoff while retaining the old destination. Eleven
+additional regression cases cover both fixes. The follow-up local full suite passed 224 tests
+and the offline suite passed 143 tests; build, strict lint and formatting passed. Native
+scheduler lifecycle verification remains a separate release gate regardless of CI results.
