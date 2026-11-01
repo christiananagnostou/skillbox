@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { writeJsonAtomic } from "./atomic-json.js";
 import { skillboxRoot } from "./paths.js";
 
 export type SkillboxConfig = {
@@ -39,7 +40,5 @@ export async function loadConfig(): Promise<SkillboxConfig> {
 }
 
 export async function saveConfig(config: SkillboxConfig): Promise<void> {
-  await fs.mkdir(skillboxRoot(), { recursive: true });
-  const json = JSON.stringify(config, null, 2);
-  await fs.writeFile(configPath(), `${json}\n`, "utf8");
+  await writeJsonAtomic(configPath(), config);
 }

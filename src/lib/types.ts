@@ -28,6 +28,7 @@ export type IndexedSkill = {
   updatedAt: string;
   lastChecked?: string;
   lastSync?: string;
+  pendingSync?: string[];
   namespace?: string;
   categories?: string[];
   tags?: string[];

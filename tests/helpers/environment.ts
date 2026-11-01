@@ -62,10 +62,12 @@ export class TestEnvironment {
     // Save and override environment variables
     this.originalEnv = {
       HOME: process.env.HOME,
+      USERPROFILE: process.env.USERPROFILE,
       XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
     };
 
     process.env.HOME = this.testRoot;
+    process.env.USERPROFILE = this.testRoot;
     process.env.XDG_CONFIG_HOME = path.join(this.testRoot, ".config");
   }
 

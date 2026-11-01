@@ -33,7 +33,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ci": "vitest run --reporter=verbose --reporter=junit --outputFile=test-results.xml",
-    "prepublishOnly": "npm run lint:ci && npm run format:check && npm run build"
+    "prepublishOnly": "npm run lint:ci && npm run format:check && npm run build",
+    "test:offline": "vitest run tests/cli-regression.test.ts tests/state-safety.test.ts tests/status-regression.test.ts tests/unit/snapshot.test.ts tests/update-engine.test.ts tests/auto-update-scheduler.test.ts tests/auto-update-policy.test.ts tests/integration/update.test.ts tests/baseline-migration.test.ts tests/snapshot-crash.test.ts tests/add-safety.test.ts tests/unit/status-tree.test.ts tests/unit/managed-guard.test.ts tests/unit/add-repo-safety.test.ts tests/integration/migrate-baseline.test.ts tests/integration/project.test.ts tests/unit/fetcher-auth.test.ts",
+    "test:package": "npm run build && node scripts/verify-clean-package.mjs"
   },
   "dependencies": {
     "chalk": "^5.6.2",

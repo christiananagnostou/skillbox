@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
-import { skillboxProjectsPath, skillboxRoot } from "./paths.js";
+import { writeJsonAtomic } from "./atomic-json.js";
+import { skillboxProjectsPath } from "./paths.js";
 import type { ProjectEntry, ProjectIndex } from "./types.js";
 
 function emptyProjects(): ProjectIndex {
@@ -20,9 +21,7 @@ export async function loadProjects(): Promise<ProjectIndex> {
 }
 
 export async function saveProjects(index: ProjectIndex): Promise<void> {
-  await fs.mkdir(skillboxRoot(), { recursive: true });
-  const json = JSON.stringify(index, null, 2);
-  await fs.writeFile(skillboxProjectsPath(), `${json}\n`, "utf8");
+  await writeJsonAtomic(skillboxProjectsPath(), index);
 }
 
 export function upsertProject(index: ProjectIndex, root: string): ProjectIndex {

@@ -115,6 +115,14 @@ Use `skillbox` to manage skills. Run `skillbox --help` for commands.
 | `~/.config/skillbox/config.json` | Configuration         |
 | `~/.config/skillbox/index.json`  | Skill index           |
 
+## Automatic skill updates
+
+Automatic updates are opt-in and disabled by default. Preview eligible skills with
+`skillbox auto-update dry-run --json`, then use
+`skillbox auto-update enable --interval 24h` to register a per-user native schedule.
+Use `status`, `logs`, and `disable` under `auto-update` to manage it.
+See [automatic updates](docs/auto-update.md) for pins, exclusions, migration and recovery limitations.
+
 ## Development
 
 ```bash

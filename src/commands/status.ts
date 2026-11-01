@@ -3,7 +3,10 @@ import { handleCommandError } from "../lib/command.js";
 import { fetchText } from "../lib/fetcher.js";
 import { loadIndex, saveIndex } from "../lib/index.js";
 import { isJsonEnabled, printInfo, printJson } from "../lib/output.js";
-import { hashContent } from "../lib/skill-store.js";
+import { fetchRepoManifest, normalizeRepoRef } from "../lib/repo-skills.js";
+import type { SkillSource } from "../lib/types.js";
+import { hasManagedEdits, readManagedManifest } from "../lib/managed-manifest.js";
+import { hashContent, skillDir } from "../lib/skill-store.js";
 import { groupAndSort, sortByName } from "../lib/source-grouping.js";
 
 type SkillStatus = {
@@ -13,6 +16,7 @@ type SkillStatus = {
   outdated: boolean;
   localChecksum: string;
   remoteChecksum?: string;
+  checkedContent?: "managed-tree" | "SKILL.md";
   error?: string;
 };
 
@@ -24,14 +28,14 @@ type SourceGroup = {
   upToDateCount: number;
 };
 
-async function checkSkillStatus(skill: {
+export async function checkSkillStatus(skill: {
   name: string;
-  source: { type: string; url?: string };
+  source: SkillSource;
   checksum: string;
 }): Promise<SkillStatus> {
   const isTrackable = skill.source.type === "url" || skill.source.type === "git";
 
-  if (!isTrackable || skill.source.type !== "url" || !skill.source.url) {
+  if (!isTrackable) {
     return {
       name: skill.name,
       source: skill.source.type,
@@ -42,9 +46,34 @@ async function checkSkillStatus(skill: {
   }
 
   try {
-    const remoteText = await fetchText(skill.source.url);
-    const remoteChecksum = hashContent(remoteText);
-    const outdated = remoteChecksum !== skill.checksum;
+    let remoteChecksum: string;
+    let outdated: boolean;
+    const checkedContent =
+      skill.source.type === "git" ? ("managed-tree" as const) : ("SKILL.md" as const);
+    if (skill.source.type === "git") {
+      const baseline = await readManagedManifest(skillDir(skill.name));
+      if (!baseline)
+        throw new Error(
+          "Unknown full-tree status: no managed-file baseline; run migrate-baseline to establish provenance."
+        );
+      if (await hasManagedEdits(skillDir(skill.name))) {
+        throw new Error(
+          "Local files differ from the managed baseline; full-tree status is unknown."
+        );
+      }
+      const [owner, repo] = (skill.source.repo ?? "").split("/");
+      if (!owner || !repo) throw new Error("Invalid Git source.");
+      const ref = await normalizeRepoRef({ owner, repo, ref: skill.source.ref ?? "main" });
+      const remote = await fetchRepoManifest(ref, skill.source.path ?? "");
+      remoteChecksum = remote["SKILL.md"];
+      outdated =
+        Object.keys(baseline).length !== Object.keys(remote).length ||
+        Object.entries(remote).some(([name, checksum]) => baseline[name] !== checksum);
+    } else {
+      if (!skill.source.url) throw new Error("Missing source URL.");
+      remoteChecksum = hashContent(await fetchText(skill.source.url));
+      outdated = remoteChecksum !== skill.checksum;
+    }
 
     return {
       name: skill.name,
@@ -53,6 +82,7 @@ async function checkSkillStatus(skill: {
       outdated,
       localChecksum: skill.checksum,
       remoteChecksum,
+      checkedContent,
     };
   } catch (err) {
     return {
@@ -121,6 +151,7 @@ function printSourceGroup(group: SourceGroup): void {
 export function registerStatus(program: Command): void {
   program
     .command("status")
+    .description("Compare Git managed trees and URL SKILL.md checksums with remote sources")
     .option("--json", "JSON output")
     .action(async (options) => {
       try {
@@ -144,11 +175,14 @@ export function registerStatus(program: Command): void {
         const totalTrackable = statuses.filter((s) => s.trackable).length;
         const totalUpToDate = statuses.filter((s) => s.trackable && !s.outdated && !s.error).length;
 
+        const failed = statuses.filter((s) => s.error).length;
+        if (failed) process.exitCode = 1;
         if (isJsonEnabled(options)) {
           printJson({
-            ok: true,
+            ok: failed === 0,
             command: "status",
             data: {
+              checkedContent: { git: "managed-tree", url: "SKILL.md" },
               total: statuses.length,
               outdated: totalOutdated,
               upToDate: totalUpToDate,

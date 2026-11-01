@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
-import { skillboxIndexPath, skillboxRoot } from "./paths.js";
+import { writeJsonAtomic } from "./atomic-json.js";
+import { skillboxIndexPath } from "./paths.js";
 import type { SkillIndex } from "./types.js";
 
 function emptyIndex(): SkillIndex {
@@ -20,10 +21,7 @@ export async function loadIndex(): Promise<SkillIndex> {
 }
 
 export async function saveIndex(index: SkillIndex): Promise<void> {
-  await fs.mkdir(skillboxRoot(), { recursive: true });
-  const filePath = skillboxIndexPath();
-  const json = JSON.stringify(index, null, 2);
-  await fs.writeFile(filePath, `${json}\n`, "utf8");
+  await writeJsonAtomic(skillboxIndexPath(), index);
 }
 
 export function upsertSkill(index: SkillIndex, skill: SkillIndex["skills"][number]): SkillIndex {
